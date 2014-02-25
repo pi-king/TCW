@@ -1,0 +1,23 @@
+<html>
+<body>
+<script type="text/javascript">
+if (typeof window.localStorage !== "undefined") {
+	if (window.localStorage.pebble_tcw_lang) {
+		if (window.localStorage.pebble_tcw_lang=="ru"){
+			location.replace("2.0.11.ru.html");
+		}
+		if (window.localStorage.pebble_tcw_lang=="en"){
+			location.replace("2.0.11.en.html");
+		}
+		if (window.localStorage.pebble_tcw_lang=="ua"){
+			location.replace("2.0.11.ua.html");
+		}		
+	}else{
+		location.replace("2.0.11.ru.html");
+	}
+}else{
+	location.replace("2.0.11.ru.html");
+}
+</script>
+</body>
+</html>

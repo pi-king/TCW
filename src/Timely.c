@@ -1,6 +1,14 @@
-#include <pebble.h>
+﻿#include <pebble.h>
+#include "config.h"
+//#include "preferences.h"
+#include "weather.h"
+#include "timely.h"
 #define DEBUGLOG 0
 #define TRANSLOG 0
+// for iOs
+#define STATUS_SCREEN_APP 			NUM_APPS
+#define SM_SCREEN_ENTER_KEY			0xFC0E
+typedef enum {CALENDAR_APP, MUSIC_APP, GPS_APP, STOCKS_APP, BITCOIN_APP, CAMERA_APP, WEATHER_APP, URL_APP, FINDPHONE_APP, REMINDERS_APP, STATUS_SCREEN_APP} AppIDs;
 /*
  * If you fork this code and release the resulting app, please be considerate and change all the appropriate values in appinfo.json 
  *
@@ -13,9 +21,12 @@
  *
  */
 
+//typedef struct { char *name;
+//} Test; 
+ 
 static Window *window;
 
-static Layer *battery_layer;
+//static Layer *battery_layer;
 static Layer *datetime_layer;
 static TextLayer *date_layer;
 static TextLayer *time_layer;
@@ -26,12 +37,16 @@ static Layer *calendar_layer;
 static Layer *statusbar;
 static Layer *slot_top;
 static Layer *slot_bot;
-static GFont unifont_14;
-static GFont unifont_18;
-static GFont unifont_18_bold;
-static GFont unifont_24;
-static GFont cal_normal;
-static GFont cal_bold;
+
+
+// weather
+static Layer *weather_layer;
+static TextLayer *weather_temperature_layer;
+static BitmapLayer *weather_icon_layer;
+static GBitmap *weather_icon_bitmap = NULL;
+static TextLayer *weather_name_layer;
+static TextLayer *weather_time_layer;
+// ----
 
 static BitmapLayer *bmp_connection_layer;
 static GBitmap *image_connection_icon;
@@ -39,64 +54,112 @@ static GBitmap *image_noconnection_icon;
 static BitmapLayer *bmp_charging_layer;
 static GBitmap *image_charging_icon;
 static GBitmap *image_hourvibe_icon;
-static TextLayer *text_connection_layer;
-static TextLayer *text_battery_layer;
+//static TextLayer *text_connection_layer;
+//static TextLayer *text_battery_layer;
+
+static BitmapLayer *pp_battphone_status;
+static BitmapLayer *pp_battpebble_status;
+static GBitmap *battphone;
+static GBitmap *battpebble;
+static GBitmap *batt_charging;
+static GBitmap *batt_pluged;
+
+static BitmapLayer *sms_incom_layer;
+static GBitmap *sms_incom;
+
+static BitmapLayer *calls_incom_layer;
+static GBitmap *calls_incom;
+
 
 static InverterLayer *inverter_layer;
-static InverterLayer *battery_meter_layer;
+//static InverterLayer *battery_meter_layer;
 
 // battery info, instantiate to 'worst scenario' to prevent false hopes
 static uint8_t battery_percent = 10;
 static bool battery_charging = false;
+
+static uint8_t phone_battery_percent =0;
+static bool phone_battery_charging = false;
+static bool phone_battery_plugged = false;
+
+static bool is_inet_connected = true;
+
+static uint8_t pebble_on_phone_battery_percent =0;
+static bool pebble_on_phone_battery_charging = false;
+
+static uint8_t sms_incom_count = 0;
+static uint8_t calls_incom_count = 0;
+
 static bool battery_plugged = false;
-static uint8_t sent_battery_percent = 10;  // TODO - make these statics within the send function
-static bool sent_battery_charging = false; // TODO - make these statics within the send function
-static bool sent_battery_plugged = false;  // TODO - make these statics within the send function
+static bool battery_blink =false;
+static uint8_t sent_battery_percent = 10;
+static bool sent_battery_charging = false;
+static bool sent_battery_plugged = false;
+static bool get_phone_battery_state =false;
+static uint8_t current_page = 0;
+
+static bool is_accel_stoped = false;
+
 AppTimer *battery_sending = NULL;
-AppTimer *timezone_request = NULL;
+AppTimer *auto_back_fp = NULL;
+AppTimer *at_battery_blink = NULL;
+AppTimer *accel_start = NULL;
 // connected info
 static bool bluetooth_connected = false;
 // suppress vibration
 static bool vibe_suppression = true;
-#define TIMEZONE_UNINITIALIZED 80
-static int8_t timezone_offset = TIMEZONE_UNINITIALIZED;
-struct tm *currentTime;
-static int8_t seconds_shown = 0;
+static int8_t timezone_offset = 0;
+static bool weather_now_loading = false;
 
+// weather
+Weather *weather;
+//static Preferences *prefs;
+
+
+
+GFont futura48;
+GFont futura60;
+GFont futura24;
+GFont futura35;
+GFont gothic24;
+GFont gothic28;
+GFont roboto49;
+
+void rotate_first_page();
 // define the persistent storage key(s)
-#define PK_SETTINGS      0
-#define PK_LANG_GEN      1 // updated    v10->v11 (utf8)
-#define PK_LANG_DATETIME 2 // deprecated v10->v11 (utf8)
-#define PK_LANG_MONTHS   3
-#define PK_LANG_DAYS     4
-#define PK_DEBUGGING     5
+#define PERSIST_DATA_MAX_LENGTH 1024
+#define   PK_SETTINGS      10
+#define    PK_LANG_GEN      11
+#define    PK_LANG_DATETIME 12	
+#define    PK_LANG_DATETIME1 13	
+#define    PK_LANG_DATETIME2 14	
+
+#define AK_SEND_PHONE_BATTERY_REQUEST 200
+#define AK_SEND_BATTERY_VALUE 211
+#define	AK_SEND_BATTERY_CHARGING 212
+#define AK_SEND_BATTERY_PLUGGED 213
 
 // define the appkeys used for appMessages
-#define AK_STYLE_INV     0
-#define AK_STYLE_DAY_INV 1
-#define AK_STYLE_GRID    2
-#define AK_VIBE_HOUR     3
-#define AK_INTL_DOWO     4
-#define AK_INTL_FMT_DATE 5 // INCOMPLETE
-#define AK_STYLE_AM_PM   6
-#define AK_STYLE_DAY     7
-#define AK_STYLE_WEEK    8
-#define AK_INTL_FMT_WEEK 9
-#define AK_DEBUGGING_ON          10
-#define AK_VIBE_PAT_DISCONNECT   11
-#define AK_VIBE_PAT_CONNECT      12
-#define AK_STRFTIME_FORMAT       13 // not implemented in config page, yet...
-#define AK_TRACK_BATTERY         14 // UNUSED
-#define AK_LANGUAGE              15
-#define AK_DEBUGLANG_ON          16
+#define AK_STYLE_INV     30
+#define AK_STYLE_DAY_INV 31
+#define AK_STYLE_GRID    32
+#define AK_VIBE_HOUR     33
+#define AK_INTL_DOWO     34
+#define AK_INTL_FMT_DATE 35 // INCOMPLETE
+#define AK_STYLE_AM_PM   36
+#define AK_STYLE_DAY     37
+#define AK_STYLE_WEEK    38
+#define AK_INTL_FMT_WEEK 39
+#define AK_VERSION       40 // UNUSED
+#define AK_VIBE_PAT_DISCONNECT   41
+#define AK_VIBE_PAT_CONNECT      42
 
 #define AK_MESSAGE_TYPE          99
 #define AK_SEND_BATT_PERCENT    100
 #define AK_SEND_BATT_CHARGING   101
 #define AK_SEND_BATT_PLUGGED    102
 #define AK_TIMEZONE_OFFSET      103
-#define AK_SEND_WATCH_VERSION   104
-#define AK_SEND_CONFIG_VERSION  105
+
 
 #define AK_TRANS_ABBR_SUNDAY    500
 #define AK_TRANS_ABBR_MONDAY    501
@@ -129,18 +192,18 @@ static int8_t seconds_shown = 0;
 #define AK_TRANS_DISCONNECTED  528
 #define AK_TRANS_TIME_AM    529
 #define AK_TRANS_TIME_PM    530
-#define AK_TRANS_ABBR_JANUARY    531
-#define AK_TRANS_ABBR_FEBRUARY   532
-#define AK_TRANS_ABBR_MARCH      533
-#define AK_TRANS_ABBR_APRIL      534
-#define AK_TRANS_ABBR_MAY        535
-#define AK_TRANS_ABBR_JUNE       536
-#define AK_TRANS_ABBR_JULY       537
-#define AK_TRANS_ABBR_AUGUST     538
-#define AK_TRANS_ABBR_SEPTEMBER  539
-#define AK_TRANS_ABBR_OCTOBER    540
-#define AK_TRANS_ABBR_NOVEMBER   541
-#define AK_TRANS_ABBR_DECEMBER   542
+#define AK_DEGREE_STYLE     531
+#define AK_FIRST_PAGE       532
+#define AK_WEATHER_UPD      533
+#define AK_BATTERY_SHOW     534
+#define AK_PHONE_BATTERY_SHOW     539
+#define AK_AUTO_BACK        540
+#define AK_DEFAULT_FONT     535 
+#define AK_GET_POSITION     536
+#define AK_TYPE_POSITION     537
+#define AK_GETPOSITION       538
+#define AK_DATA_OVER_TIME    541
+#define AK_TRANS_WEEK		542
 
 // primary coordinates
 #define DEVICE_WIDTH        144
@@ -155,19 +218,19 @@ static int8_t seconds_shown = 0;
 #define STAT_BATT_HEIGHT     15
 #define STAT_BATT_NIB_WIDTH   3 // >= 3
 #define STAT_BATT_NIB_HEIGHT  5 // >= 3
-#define STAT_BT_ICON_LEFT    -2 // 0
+#define STAT_BT_ICON_LEFT     4 // 0
 #define STAT_BT_ICON_TOP      2
 #define STAT_CHRG_ICON_LEFT  76
 #define STAT_CHRG_ICON_TOP    2
 
 // relative coordinates (relative to SLOTs)
-#define REL_CLOCK_DATE_LEFT       0
-#define REL_CLOCK_DATE_TOP        0
-#define REL_CLOCK_DATE_HEIGHT    30 // date/time overlap, due to the way text is 'positioned'
-#define REL_CLOCK_TIME_LEFT       0
-#define REL_CLOCK_TIME_TOP        7
-#define REL_CLOCK_TIME_HEIGHT    60 // date/time overlap, due to the way text is 'positioned'
-#define REL_CLOCK_SUBTEXT_TOP    56 // time/ampm overlap, due to the way text is 'positioned'
+static int REL_CLOCK_DATE_LEFT		=0;
+static int REL_CLOCK_DATE_TOP		=-6;
+static int REL_CLOCK_DATE_HEIGHT	=30; // date/time overlap, due to the way text is 'positioned'
+static int REL_CLOCK_TIME_LEFT		=0;
+static int REL_CLOCK_TIME_TOP		=7;
+static int REL_CLOCK_TIME_HEIGHT	=60; // date/time overlap, due to the way text is 'positioned'
+static int REL_CLOCK_SUBTEXT_TOP	=56; // time/ampm overlap, due to the way text is 'positioned'
 
 #define SLOT_ID_CLOCK_1  0
 #define SLOT_ID_CALENDAR 1
@@ -175,7 +238,7 @@ static int8_t seconds_shown = 0;
 #define SLOT_ID_CLOCK_2  3
 
 // Create a struct to hold our persistent settings...
-typedef struct persist { // 18 bytes
+typedef struct persist {
   uint8_t version;                // version key
   uint8_t inverted;               // Invert display
   uint8_t day_invert;             // Invert colors on today's date
@@ -189,82 +252,82 @@ typedef struct persist { // 18 bytes
   uint8_t week_format;            // week format (calculation, e.g. ISO 8601)
   uint8_t vibe_pat_disconnect;    // vibration pattern for disconnect
   uint8_t vibe_pat_connect;       // vibration pattern for connect
-  char *strftime_format;          // custom date_format string (date_format = 255)
-  uint8_t track_battery;          // track battery information
+  uint8_t slot_one;               // item in slot 1 [T]
+  uint8_t slot_two;               // item in slot 2 [B]
+  uint8_t slot_three;             // item in slot 3 [T, doubletap]
+  uint8_t slot_four;              // item in slot 4 [B, doubletap]
+  uint8_t slot_five;              // item in slot 5 [T, tripletap]
+  uint8_t slot_six;               // item in slot 6 [B, tripletap]
+  uint8_t degree_style;           // формат градусов С-F
+  uint8_t first_page;             // что на первой странице календарь или погода
+  uint32_t weather_upd;            // интервал обновления погоды
+  uint32_t battery_show;           // отображать индикатор батареии
+  uint32_t phone_battery_show;     // отображать индикатор батареи телефона
+  uint32_t auto_back;				// автовозврат на первую страницу
+  uint8_t default_font;            // шрифт часов
+  uint8_t get_position;            // выбор позиции погоды
+  char type_position[50];         // набраный населенный пункт
+  uint8_t data_over_time;			// 1- дата над временем
 } __attribute__((__packed__)) persist;
 
-typedef struct persist_months_lang { // 252 bytes
-  char monthsNames[12][21];       // 252: 10-20 UTF8 characters for each of 12 months
-//                                   252 bytes
-} __attribute__((__packed__)) persist_months_lang;
+typedef struct persist_datetime_lang { // 249 bytes
+  char abbrDaysOfWeek[7][5];      //  21:  2 characters for each of  7 weekdays
+  char monthsNames[12][20];       // 144: 11 characters for each of 12 months
+  char DaysOfWeek[7][32];         //  84: 11 characters for each of  7 weekdays
+//                                   249 bytes
+} __attribute__((__packed__)) persist_datetime_lang;
 
-typedef struct persist_days_lang { // 238 bytes
-  char DaysOfWeek[7][34];         //  238: 16-33 UTF8 characters for each of 7 weekdays
-//                                    238 bytes
-} __attribute__((__packed__)) persist_days_lang;
-
-typedef struct persist_general_lang { // 253 bytes
-  char statuses[2][26];           //  40: 12-25 characters for each of  2 statuses
-  char abbrTime[2][12];           //  24:  5-11 characters for each of  2 abbreviations
-  char abbrDaysOfWeek[7][6];      //  42:  2- 5 characters for each of  7 weekdays abbreviations
-  char abbrMonthsNames[12][11];   // 132:  5-11 characters for each of 12 months abbreviations
-  char language[3];               //   3:  2 characters for language (internal, stored as ascii for convenience)
-//                                   253 bytes
+typedef struct persist_general_lang { // 32 bytes
+//  char statuses[2][18];           //  20:  9 characters for each of  2 statuses
+  char abbrTime[2][10];            //  12:  5 characters for each of  2 abbreviations
+  char getposition[45];
+  char week[5];
 } __attribute__((__packed__)) persist_general_lang;
 
-typedef struct persist_debug { // 6 bytes
-  bool general;              // debugging messages (general)
-  bool language;             // debugging messages (language/translation)
-  bool reserved_1;           // debugging messages (reserved to spare updates later)
-  bool reserved_2;           // debugging messages (reserved to spare updates later)
-  bool reserved_3;           // debugging messages (reserved to spare updates later)
-  bool reserved_4;           // debugging messages (reserved to spare updates later)
-} __attribute__((__packed__)) persist_debug;
-
-/*
-*/
-
 persist settings = {
-  .version    = 11,
+  .version    = 2,
   .inverted   = 0, // no, dark
   .day_invert = 1, // yes
   .grid       = 1, // yes
   .vibe_hour  = 0, // no
-  .dayOfWeekOffset = 0, // 0 - 6, Sun - Sat
+  .dayOfWeekOffset = 1, // 0 - 6, Sun - Sat
   .date_format = 0, // Month DD, YYYY
-  .show_am_pm  = 0, // no AM/PM       [0:Hide, 1:AM/PM, 2:TZ,    3:Week,  4:DoY,  5:DLiY,   6:Seconds]
-  .show_day    = 0, // no day name    [0:Hide, 1:Day,   2:Month, 3:TZ,    4:Week, 5:AM/PM   6:DoY/DLiY]
-  .show_week   = 0, // no week number [0:Hide, 1:Week,  2:TZ,    3:AM/PM, 4:DoY,  5:DLiY,   6:Seconds]
+  .show_am_pm  = 1, // no AM/PM       [0:Hide, 1:AM/PM, 2:TZ,    3:Week]
+  .show_day    = 1, // no day name    [0:Hide, 1:Day,   2:Month, 3:TZ, 4:Week, 5:AM/PM]
+  .show_week   = 1, // no week number [0:Hide, 1:Week,  2:TZ,    3:AM/PM
   .week_format = 0, // ISO 8601
   .vibe_pat_disconnect = 2, // double vibe
   .vibe_pat_connect = 0, // no vibe
-  .strftime_format = "%Y-%m-%d",
-  .track_battery = 0, // no battery tracking by default
+  .slot_one   = 0, // clock_1
+  .slot_two   = 1, // calendar
+  .slot_three = 2, // TODO: weather
+  .slot_four  = 3, // TODO: clock_2 (2nd timezone)
+  // options for other slots: extend weather to take 2, moon, tides, travel to/home, context, etc.
+  .slot_five  = 1, // TODO: calendar (test)
+  .slot_six   = 0, // TODO: weather  (test)
+  .degree_style = 1, // градусы С
+  .first_page = 0,   // календарь
+  .weather_upd = 10*60,  // обновление погоды
+  .battery_show =101,    // индикатор батареи всегда
+  .phone_battery_show = 101,
+  .auto_back = 0,
+  .default_font = 0,     // Digital
+  .get_position = 1,     // GPS
+  .type_position = "\0",
+  .data_over_time = 1,
 };
 
-persist_months_lang lang_months = {
-  .monthsNames = { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" },
-};
-
-persist_days_lang lang_days = {
-  .DaysOfWeek = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" },
+persist_datetime_lang lang_datetime = {
+  .abbrDaysOfWeek = { "Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб" },
+  .monthsNames = { "ЯНВАРЬ", "ФЕВРАЛЬ", "МАРТ", "АПРЕЛЬ", "МАЙ", "ИЮНЬ", "ИЮЛЬ", "АВГУСТ", "СЕНТЯБРЬ", "ОКТЯБРЬ", "НОЯБРЬ", "ДЕКАБРЬ" },
+  .DaysOfWeek = { "Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота" },
 };
 
 persist_general_lang lang_gen = {
-  .statuses = { "Linked", "NOLINK" },
+//  .statuses = { "Соед", "НЕТ соед" },
   .abbrTime = { "AM", "PM" },
-  .abbrDaysOfWeek = { "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" },
-  .abbrMonthsNames = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" },
-  .language = "EN",
-};
-
-persist_debug debug = {
-  .general = false,     // debugging disabled by default
-  .language  = false,   // debugging disabled by default
-  .reserved_1 = false,  // debugging disabled by default
-  .reserved_2 = false,  // debugging disabled by default
-  .reserved_3 = false,  // debugging disabled by default
-  .reserved_4 = false,  // debugging disabled by default
+  .getposition = "поиск местоположения",
+  .week = "Нд",
 };
 
 // How many days are/were in the month
@@ -298,7 +361,181 @@ struct tm *get_time()
     return localtime(&tt);
 }
 
+// weather
+
+/*void change_preferences(Preferences *old_prefs, Preferences *new_prefs) {
+	if(old_prefs == NULL || old_prefs->temp_format != new_prefs->temp_format) {
+		if(!weather_needs_update(weather, new_prefs->weather_update_freq))
+			update_weather_info(weather);
+	}
+}*/
+void set_default_font(){
+	if(settings.default_font==0){ // digitsl
+		text_layer_set_font(date_layer, futura24);
+		text_layer_set_font(time_layer, futura48);
+		text_layer_set_font(weather_temperature_layer, futura35);
+	}
+	if(settings.default_font==1){ // normal
+		text_layer_set_font(date_layer, gothic24);		
+		text_layer_set_font(time_layer, roboto49);
+		text_layer_set_font(weather_temperature_layer, gothic28);
+	}
+	
+}
+
+void update_weather_info(Weather *weather) {
+//	text_layer_set_text(weather_temperature_layer, "АВИ");
+    if(weather->conditions % 1000) {
+        static char temperature_text[8];
+		int temperature = weather_convert_temperature(weather->temperature, settings.degree_style);//prefs->temp_format);
+		
+        snprintf(temperature_text, 8, "%d\u00B0", temperature);
+        text_layer_set_text(weather_temperature_layer, temperature_text);
+        
+/*        if(10 <= temperature && temperature <= 99) {
+            layer_set_frame(text_layer_get_layer(weather_temperature_layer), GRect(70, 19+3, 72, 80));
+//            text_layer_set_font(weather_temperature_layer, futura_35);
+        }
+        else if((0 <= temperature && temperature <= 9) || (-9 <= temperature && temperature <= -1)) {
+            layer_set_frame(text_layer_get_layer(weather_temperature_layer), GRect(70, 19, 72, 80));
+//            text_layer_set_font(weather_temperature_layer, futura_40);
+        }
+        else if((100 <= temperature) || (-99 <= temperature && temperature <= -10)) {
+            layer_set_frame(text_layer_get_layer(weather_temperature_layer), GRect(70, 19+3, 72, 80));
+//            text_layer_set_font(weather_temperature_layer, futura_28);
+        }
+        else {
+            layer_set_frame(text_layer_get_layer(weather_temperature_layer), GRect(70, 19+6, 72, 80));
+//            text_layer_set_font(weather_temperature_layer, futura_25);
+        }*/
+        
+        if(weather_icon_bitmap)
+            gbitmap_destroy(weather_icon_bitmap);
+        weather_icon_bitmap = gbitmap_create_with_resource(get_resource_for_weather_conditions(weather->conditions));
+        bitmap_layer_set_bitmap(weather_icon_layer, weather_icon_bitmap);
+		static char weather_name_text[40]="\0";
+		if(settings.get_position==0){
+        snprintf(weather_name_text, sizeof(weather_name_text), "%s (%s)", weather->name, weather->country);
+		}
+		if(settings.get_position==1){
+        snprintf(weather_name_text, sizeof(weather_name_text), "%s (%s)(GPS)", weather->name, weather->country);
+		}
+		
+		if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "location %s",weather_name_text);}
+		text_layer_set_text(weather_name_layer,weather_name_text);//weather_name_text);
+
+		static char time_text[] = "00:00";
+		static char time_text1[20];
+		char *time_format;
+		if (clock_is_24h_style()) {
+			time_format = "%R\n";
+		} else {
+			time_format = "%I:%M\n";
+		}
+		int up_min;
+		if (is_inet_connected){
+			up_min=settings.weather_upd / 60;
+			strftime(time_text, sizeof(time_text), time_format, localtime(&weather->last_update_time));
+			snprintf(time_text1,20,"%s (%d)",time_text, up_min);
+			if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "update %s",time_text);};
+			text_layer_set_text(weather_time_layer,time_text1);
+		}else{
+			text_layer_set_text(weather_time_layer,"Offline");
+		}
+
+    }
+}
+
+uint32_t get_resource_for_weather_conditions(uint32_t conditions) {
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "get_resource_for_weather_conditions"); }
+	bool is_day = conditions >= 1000;
+    switch((conditions - (conditions % 100)) % 1000) {
+        case 0:
+            if (DEBUGLOG) {APP_LOG(APP_LOG_LEVEL_DEBUG, "Error getting data (conditions returned %d)", (int)conditions);};
+            return RESOURCE_ID_ICON_CLOUD_ERROR;
+        case 200:
+            return RESOURCE_ID_WEATHER_THUNDER;
+        case 300:
+            return RESOURCE_ID_WEATHER_DRIZZLE;
+        case 500:
+            return RESOURCE_ID_WEATHER_RAIN;
+        case 600:
+            switch(conditions % 100) {
+                case 611:
+                    return RESOURCE_ID_WEATHER_SLEET;
+                case 612:
+                    return RESOURCE_ID_WEATHER_RAIN_SLEET;
+                case 615:
+                case 616:
+                case 620:
+                case 621:
+                case 622:
+                    return RESOURCE_ID_WEATHER_RAIN_SNOW;
+            }
+            return RESOURCE_ID_WEATHER_SNOW;
+        case 700:
+            switch(conditions % 100) {
+                case 731:
+                case 781:
+                    return RESOURCE_ID_WEATHER_WIND;
+            }
+            return RESOURCE_ID_WEATHER_FOG;
+        case 800:
+            switch(conditions % 100) {
+                case 0:
+					if(is_day)
+						return RESOURCE_ID_WEATHER_CLEAR_DAY;
+					return RESOURCE_ID_WEATHER_CLEAR_NIGHT;
+                case 1:
+                case 2:
+					if(is_day)
+						return RESOURCE_ID_WEATHER_PARTLY_CLOUDY_DAY;
+					return RESOURCE_ID_WEATHER_PARTLY_CLOUDY_NIGHT;
+                case 3:
+                case 4:
+                    return RESOURCE_ID_WEATHER_CLOUDY;
+            }
+        case 900:
+            switch(conditions % 100) {
+                case 0:
+                case 1:
+                case 2:
+                    return RESOURCE_ID_WEATHER_WIND;
+                case 3:
+                    return RESOURCE_ID_WEATHER_HOT;
+                case 4:
+                    return RESOURCE_ID_WEATHER_COLD;
+                case 5:
+                    return RESOURCE_ID_WEATHER_WIND;
+                case 950:
+                case 951:
+                case 952:
+                case 953:
+					if(is_day)
+						return RESOURCE_ID_WEATHER_CLEAR_DAY;
+					return RESOURCE_ID_WEATHER_CLEAR_NIGHT;
+                case 954:
+                case 955:
+                case 956:
+                case 957:
+                case 959:
+                case 960:
+                case 961:
+                case 962:
+                    return RESOURCE_ID_WEATHER_WIND;
+            }
+    }
+    
+    if (DEBUGLOG) {APP_LOG(APP_LOG_LEVEL_WARNING, "Unknown wearther conditions: %d", (int)conditions);};
+    return RESOURCE_ID_ICON_CLOUD_ERROR;
+}
+
+// -weather
+
+
+
 void setColors(GContext* ctx) {
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function setColors"); }
     window_set_background_color(window, GColorBlack);
     graphics_context_set_stroke_color(ctx, GColorWhite);
     graphics_context_set_fill_color(ctx, GColorBlack);
@@ -306,6 +543,7 @@ void setColors(GContext* ctx) {
 }
 
 void setInvColors(GContext* ctx) {
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function setInvColors"); }
     window_set_background_color(window, GColorWhite);
     graphics_context_set_stroke_color(ctx, GColorBlack);
     graphics_context_set_fill_color(ctx, GColorWhite);
@@ -313,7 +551,9 @@ void setInvColors(GContext* ctx) {
 }
 
 void calendar_layer_update_callback(Layer *me, GContext* ctx) {
+
     (void)me;
+    struct tm *currentTime = get_time();
 
     int mon = currentTime->tm_mon;
     int year = currentTime->tm_year + 1900;
@@ -403,16 +643,17 @@ void calendar_layer_update_callback(Layer *me, GContext* ctx) {
     if (!show_last) { weeks--; }
     if (!show_next) { weeks--; }
         
-    GFont current = cal_normal;
+    GFont normal = fonts_get_system_font(FONT_KEY_GOTHIC_14); // fh = 16
+    GFont bold   = fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD); // fh = 22
+    GFont current = normal;
     int font_vert_offset = 0;
-    if (strcmp(lang_gen.language,"RU") == 0 ) { font_vert_offset = -2; }
 
     // generate a light background for the calendar grid
-    if (settings.grid) {
-      setInvColors(ctx);
-      graphics_fill_rect(ctx, GRect (CAL_LEFT + CAL_GAP, CAL_HEIGHT - CAL_GAP, DEVICE_WIDTH - 2 * (CAL_LEFT + CAL_GAP), CAL_HEIGHT * weeks), 0, GCornerNone);
-      setColors(ctx);
-    }
+    setInvColors(ctx);
+	if(settings.grid==1){
+		graphics_fill_rect(ctx, GRect (CAL_LEFT + CAL_GAP, CAL_HEIGHT - CAL_GAP, DEVICE_WIDTH - 2 * (CAL_LEFT + CAL_GAP), CAL_HEIGHT * weeks), 0, GCornerNone);
+	}
+    setColors(ctx);
     for (int col = 0; col < CAL_DAYS; col++) {
 
       // Adjust labels by specified offset
@@ -420,30 +661,19 @@ void calendar_layer_update_callback(Layer *me, GContext* ctx) {
       if (weekday > 6) { weekday -= 7; }
 
       if (col == specialDay) {
-        current = cal_bold;
-        font_vert_offset = -3;
-        if (strcmp(lang_gen.language,"RU") == 0 ) { font_vert_offset = -2; }
+        current = bold;
+        font_vert_offset = 0;
       }
       // draw the cell background
       graphics_fill_rect(ctx, GRect (CAL_WIDTH * col + CAL_LEFT + CAL_GAP, 0, CAL_WIDTH - CAL_GAP, CAL_HEIGHT - CAL_GAP), 0, GCornerNone);
 
       // draw the cell text
-      graphics_draw_text(ctx, lang_gen.abbrDaysOfWeek[weekday], current, GRect(CAL_WIDTH * col + CAL_LEFT + CAL_GAP, CAL_GAP + font_vert_offset, CAL_WIDTH, CAL_HEIGHT), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL); 
+      graphics_draw_text(ctx, lang_datetime.abbrDaysOfWeek[weekday], current, GRect(CAL_WIDTH * col + CAL_LEFT + CAL_GAP, CAL_GAP + font_vert_offset, CAL_WIDTH, CAL_HEIGHT), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL); 
       if (col == specialDay) {
-        if (strcmp(lang_gen.language,"RU") == 0 ) {
-          // we don't actually have a bold font for this, so we'll use font double-striking to simulate bold
-          graphics_draw_text(ctx, lang_gen.abbrDaysOfWeek[weekday], current, GRect(CAL_WIDTH * col + CAL_LEFT + CAL_GAP + 1, CAL_GAP + font_vert_offset, CAL_WIDTH, CAL_HEIGHT), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL); 
-        }
-        current = cal_normal;
+        current = normal;
         font_vert_offset = 0;
-        if (strcmp(lang_gen.language,"RU") == 0 ) { font_vert_offset = -2; }
       }
     }
-
-    GFont normal = fonts_get_system_font(FONT_KEY_GOTHIC_14); // fh = 16
-    GFont bold   = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD); // fh = 22
-    current = normal;
-    font_vert_offset = 0;
 
     // draw the individual calendar rows/columns
     int week = 0;
@@ -453,11 +683,11 @@ void calendar_layer_update_callback(Layer *me, GContext* ctx) {
       week++;
       for (int col = 0; col < CAL_DAYS; col++) {
         if ( row == 2 && col == specialDay) {
-          if (settings.day_invert) {
-            setInvColors(ctx);
-          }
+		  if(settings.day_invert ==1){	
+			setInvColors(ctx);
+		  }
           current = bold;
-          font_vert_offset = -3;
+          font_vert_offset = 0;
         }
 
         // draw the cell background
@@ -469,7 +699,9 @@ void calendar_layer_update_callback(Layer *me, GContext* ctx) {
         graphics_draw_text(ctx, date_text, current, GRect(CAL_WIDTH * col + CAL_LEFT, CAL_HEIGHT * week - CAL_GAP + font_vert_offset, CAL_WIDTH, CAL_HEIGHT), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL); 
 
         if ( row == 2 && col == specialDay) {
-          setColors(ctx);
+		  if(settings.day_invert==1){	
+            setColors(ctx);
+		  }
           current = normal;
           font_vert_offset = 0;
         }
@@ -478,120 +710,43 @@ void calendar_layer_update_callback(Layer *me, GContext* ctx) {
 }
 
 void update_date_text() {
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function update_date_text"); }
+    struct tm *currentTime = get_time();
 
     // TODO - 18 @ this font is approaching the max width, localization may require smaller fonts, or no year...
-    //September 11, 2013 => 18 chars, 9 of which could potentially be dual byte utf8 characters
+    //September 11, 2013 => 18 chars
     //123456789012345678
 
-    static char date_text[24];
-    static char date_text_2[24];
-    static char date_string[48];
-    char *strftime_format;
+    static char date_text[20];
+    static char date_string[30];
+
     // http://www.cplusplus.com/reference/ctime/strftime/
+    //strftime(date_text, sizeof(date_text), "%B %d, %Y", currentTime); // Month DD, YYYY {not localized}
 
-    if (settings.date_format < 215) { // localized date formats...
-      switch ( settings.date_format ) {
-      case 0: // MMMM DD, YYYY (localized)
-        strftime(date_text, sizeof(date_text), "%d, %Y", currentTime); // DD, YYYY
-        snprintf(date_string, sizeof(date_string), "%s %s", lang_months.monthsNames[currentTime->tm_mon], date_text); // prefix Month
-        break;
-      case 1: // MMMM DD, 'YY (localized)
-        strftime(date_text, sizeof(date_text), "%d, '%y", currentTime); // DD, 'YY
-        snprintf(date_string, sizeof(date_string), "%s %s", lang_months.monthsNames[currentTime->tm_mon], date_text); // prefix Month
-        break;
-      case 2: // Mmm DD, YYYY (localized)
-        strftime(date_text, sizeof(date_text), "%d, %Y", currentTime); // DD, YYYY
-        snprintf(date_string, sizeof(date_string), "%s %s", lang_gen.abbrMonthsNames[currentTime->tm_mon], date_text); // prefix Mon
-        break;
-      case 3: // Mmm DD, 'YY (localized)
-        strftime(date_text, sizeof(date_text), "%d, '%y", currentTime); // DD, 'YY
-        snprintf(date_string, sizeof(date_string), "%s %s", lang_gen.abbrMonthsNames[currentTime->tm_mon], date_text); // prefix Mon
-        break;
-      case 11: // D MMMM YYYY (localized)
-        strftime(date_text, sizeof(date_text), "%d", currentTime); // D
-        strftime(date_text_2, sizeof(date_text_2), "%Y", currentTime); // YYYY
-        snprintf(date_string, sizeof(date_string), "%s %s %s", date_text_2, lang_months.monthsNames[currentTime->tm_mon], date_text); // insert Month
-        break;
-      case 12: // D MMMM 'YY (localized)
-        strftime(date_text, sizeof(date_text), "%d", currentTime); // D
-        strftime(date_text_2, sizeof(date_text_2), "'%y", currentTime); // YY
-        snprintf(date_string, sizeof(date_string), "%s %s %s", date_text_2, lang_months.monthsNames[currentTime->tm_mon], date_text); // insert Month
-        break;
-      case 13: // D Mmm YYYY (localized)
-        strftime(date_text, sizeof(date_text), "%d", currentTime); // D
-        strftime(date_text_2, sizeof(date_text_2), "%Y", currentTime); // YYYY
-        snprintf(date_string, sizeof(date_string), "%s %s %s", date_text_2, lang_gen.abbrMonthsNames[currentTime->tm_mon], date_text); // insert Mon
-        break;
-      case 14: // D Mmm 'YY (localized)
-        strftime(date_text, sizeof(date_text), "%d", currentTime); // D
-        strftime(date_text_2, sizeof(date_text_2), "'%y", currentTime); // YY
-        snprintf(date_string, sizeof(date_string), "%s %s %s", date_text_2, lang_gen.abbrMonthsNames[currentTime->tm_mon], date_text); // insert Mon
-        break;
-      }
-    } else { // non-localized date formats, straight strftime function calls
-      switch ( settings.date_format ) {
-      // DD MM YYYY (%d %m %Y)
-      case 215: strftime_format = "%d.%m.%Y"; break; // DD.MM.YYYY
-      case 216: strftime_format = "%d-%m-%Y"; break; // DD-MM-YYYY
-      case 217: strftime_format = "%d/%m/%Y"; break; // DD/MM/YYYY
-      case 218: strftime_format = "%d %m %Y"; break; // DD MM YYYY
-      case 219: strftime_format = "%d%m%Y"; break;   // DDMMYYYY
-      // DD MM YY (%d %m %y)
-      case 220: strftime_format = "%d.%m.%y"; break; // DD.MM.YY
-      case 221: strftime_format = "%d-%m-%y"; break; // DD-MM-YY
-      case 222: strftime_format = "%d/%m/%y"; break; // DD/MM/YY
-      case 223: strftime_format = "%d %m %y"; break; // DD MM YY
-      case 224: strftime_format = "%d%m%y"; break;   // DDMMYY
-      // dd MM YYYY (%e %m %Y)
-      case 225: strftime_format = "%e.%m.%Y"; break; // dd.MM.YYYY
-      case 226: strftime_format = "%e-%m-%Y"; break; // dd-MM-YYYY
-      case 227: strftime_format = "%e/%m/%Y"; break; // dd/MM/YYYY
-      case 228: strftime_format = "%e %m %Y"; break; // dd MM YYYY
-      case 229: strftime_format = "%e%m%Y"; break;   // ddMMYYYY
-      // dd MM YY (%e %m %y)
-      case 230: strftime_format = "%e.%m.%y"; break; // dd.MM.YY
-      case 231: strftime_format = "%e-%m-%y"; break; // dd-MM-YY
-      case 232: strftime_format = "%e/%m/%y"; break; // dd/MM/YY
-      case 233: strftime_format = "%e %m %y"; break; // dd MM YY
-      case 234: strftime_format = "%e%m%y"; break;   // ddMMYY
-
-      // YYYY MM DD (%Y %m %d)
-      case 235: strftime_format = "%Y.%m.%d"; break; // YYYY.MM.DD
-      case 236: strftime_format = "%Y-%m-%d"; break; // YYYY-MM-DD
-      case 237: strftime_format = "%Y/%m/%d"; break; // YYYY/MM/DD
-      case 238: strftime_format = "%Y %m %d"; break; // YYYY MM DD
-      case 239: strftime_format = "%Y%m%d"; break;   // YYYYMMDD
-      // YY MM DD (%y %m %d)
-      case 240: strftime_format = "%y.%m.%d"; break; // YY.MM.DD
-      case 241: strftime_format = "%y-%m-%d"; break; // YY-MM-DD
-      case 242: strftime_format = "%y/%m/%d"; break; // YY/MM/DD
-      case 243: strftime_format = "%y %m %d"; break; // YY MM DD
-      case 244: strftime_format = "%y%m%d"; break;   // YYMMDD
-      // YYYY MM dd (%Y %m %e)
-      case 245: strftime_format = "%Y.%m.%e"; break; // YYYY.MM.dd
-      case 246: strftime_format = "%Y-%m-%e"; break; // YYYY-MM-dd
-      case 247: strftime_format = "%Y/%m/%e"; break; // YYYY/MM/dd
-      case 248: strftime_format = "%Y %m %e"; break; // YYYY MM dd
-      case 249: strftime_format = "%Y%m%e"; break;   // YYYYMMdd
-      // YY MM dd (%y %m %e)
-      case 250: strftime_format = "%y.%m.%e"; break; // YY.MM.dd
-      case 251: strftime_format = "%y-%m-%e"; break; // YY-MM-dd
-      case 252: strftime_format = "%y/%m/%e"; break; // YY/MM/dd
-      case 253: strftime_format = "%y %m %e"; break; // YY MM dd
-      case 254: strftime_format = "%y%m%e"; break;   // YYMMdd
-      // reserve 255 for a 'custom strftime string via AppMessage provided by config page'
-      case 255: strftime_format = settings.strftime_format; break;
-      }
-
-      // apply our (non-localized) strftime format
-      strftime(date_text, sizeof(date_text), strftime_format, currentTime);  // DD.MM.YYYY
+    if (settings.date_format == 0) {
+      // Month DD, YYYY (localized)
+      strftime(date_text, sizeof(date_text), "%d, %Y", currentTime); // DD, YYYY
+      snprintf(date_string, sizeof(date_string), "%s %s", lang_datetime.monthsNames[currentTime->tm_mon], date_text); // prefix Month (localized)
+    } else if (settings.date_format == 1) {
+      // DD.MM.YYYY
+      strftime(date_text, sizeof(date_text), "%d.%m.%Y", currentTime);  // DD.MM.YYYY
       snprintf(date_string, sizeof(date_string), "%s", date_text); // straight copy
     }
+    // dd/mm/yyyy
+    // yyyy.mm.dd
+    // yyyy mm dd
+    // yyyy/mm/dd
+    // YYYY MM DD
+    // YYYY-MM-DD
+    // D MMMM YYYY
+    // yyyy-mm-dd
+    // d.m.yyyy
 
     text_layer_set_text(date_layer, date_string);
 }
 
 void update_time_text() {
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function update_time_text"); }
   // Need to be static because used by the system later.
   static char time_text[] = "00:00";
 
@@ -602,6 +757,8 @@ void update_time_text() {
   } else {
     time_format = "%I:%M";
   }
+
+  struct tm *currentTime = get_time();
 
   strftime(time_text, sizeof(time_text), time_format, currentTime);
 
@@ -618,29 +775,43 @@ void update_time_text() {
 }
 
 void update_day_text(TextLayer *which_layer) {
-  text_layer_set_text(which_layer, lang_days.DaysOfWeek[currentTime->tm_wday]);
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function update_day_tex"); }
+  struct tm *currentTime = get_time();
+  text_layer_set_text(which_layer, lang_datetime.DaysOfWeek[currentTime->tm_wday]);
 }
 
 void update_month_text(TextLayer *which_layer) {
-  text_layer_set_text(which_layer, lang_months.monthsNames[currentTime->tm_mon]);
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function update_month_text"); }
+  struct tm *currentTime = get_time();
+  text_layer_set_text(which_layer, lang_datetime.monthsNames[currentTime->tm_mon]);
 }
 
 void update_week_text(TextLayer *which_layer) {
-  static char week_text[] = "W00";
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function update_week_text"); }
+  struct tm *currentTime = get_time();
+  static char week_text[7] = "\0";
+  static char week_num[3] = "\0";
   if (settings.week_format == 0) {
     // ISO 8601 week number (00-53)
-    strftime(week_text, sizeof(week_text), "W%V", currentTime);
+	strftime(week_num, sizeof(week_num), "%V", currentTime);
   } else if (settings.week_format == 1) {
     // Week number with the first Sunday as the first day of week one (00-53)
-    strftime(week_text, sizeof(week_text), "W%U", currentTime);
+	strftime(week_num, sizeof(week_num), "%U", currentTime);
   } else if (settings.week_format == 2) {
     // Week number with the first Monday as the first day of week one (00-53)
-    strftime(week_text, sizeof(week_text), "W%W", currentTime);
+	strftime(week_num, sizeof(week_num), "%W", currentTime);
   }
+  snprintf(week_text, sizeof(lang_gen.week), "%s",lang_gen.week);
+//  strcat(week_text,lang_gen.week);
+  strncat(week_text,week_num,2);
+  if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "week_text %s", week_text);  }
   text_layer_set_text(which_layer, week_text);
 }
 
 void update_ampm_text(TextLayer *which_layer) {
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function update_ampm_text"); }
+  struct tm *currentTime = get_time();
+
   if (currentTime->tm_hour < 12 ) {
     text_layer_set_text(which_layer, lang_gen.abbrTime[0]); //  0-11 AM
   } else {
@@ -648,71 +819,20 @@ void update_ampm_text(TextLayer *which_layer) {
   }
 }
 
-void update_seconds_text(TextLayer *which_layer) {
-  static char seconds_text[] = "00"; // 00-61
-  strftime(seconds_text, sizeof(seconds_text), "%S", currentTime);
-  text_layer_set_text(which_layer, seconds_text);
-}
-
-char * get_doy_text() {
-  static char doy_text[] = "D000";
-  strftime(doy_text, sizeof(doy_text), "D%j", currentTime);
-  return doy_text;
-}
-
-char * get_dliy_text() {
-  static char dliy_text[] = "R000";
-  int daysThisFeb = daysInMonth(currentTime->tm_mon, currentTime->tm_year + 1900);
-  int daysThisYear = 365;
-  if (daysThisFeb == 29) { daysThisYear = 366; }
-  int daysSinceJanFirst = currentTime->tm_yday; // 0-365 inclusive
-  int daysLeftThisYear = daysThisYear - daysSinceJanFirst - 1;
-  snprintf(dliy_text, sizeof(dliy_text), "R%03d", daysLeftThisYear);
-  return dliy_text;
-}
-
-void update_doy_text(TextLayer *which_layer) {
-  text_layer_set_text(which_layer, get_doy_text());
-}
-
-void update_dliy_text(TextLayer *which_layer) {
-  text_layer_set_text(which_layer, get_dliy_text());
-}
-
-void update_doy_dliy_text(TextLayer *which_layer) {
-  static char doy_dliy_text[] = "D000/R000";
-  snprintf(doy_dliy_text, sizeof(doy_dliy_text), "%s/%s", get_doy_text(), get_dliy_text());
-  text_layer_set_text(which_layer, doy_dliy_text);
-}
 
 void update_timezone_text(TextLayer *which_layer) {
-  static char timezone_text[10];
-  int tz_hours = 0;
-  int tz_mins  = 0;
-  tz_mins  = timezone_offset % 4;
-  tz_hours = (timezone_offset - tz_mins)/ 4;
-  tz_mins  = tz_mins * 15;
-  if (timezone_offset == TIMEZONE_UNINITIALIZED) {
-    snprintf(timezone_text, sizeof(timezone_text), "UTC ?");
-  } else if (timezone_offset > 0) {
-    if (tz_mins == 0) {
-      //snprintf(timezone_text, sizeof(timezone_text), "UTC-%d:00", tz_hours);
-      snprintf(timezone_text, sizeof(timezone_text), "UTC-%d", tz_hours);
-    } else {
-      snprintf(timezone_text, sizeof(timezone_text), "UTC-%d:%d", tz_hours, tz_mins);
-    }
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "update_timezone_text"); }
+  static char timezone_text[7];
+  if (timezone_offset > 0) {
+    snprintf(timezone_text, sizeof(timezone_text), "GMT-%d", timezone_offset);
   } else {
-    if (tz_mins == 0) {
-      //snprintf(timezone_text, sizeof(timezone_text), "UTC+%d:00", abs(tz_hours));
-      snprintf(timezone_text, sizeof(timezone_text), "UTC+%d", abs(tz_hours));
-    } else {
-      snprintf(timezone_text, sizeof(timezone_text), "UTC+%d:%d", abs(tz_hours), abs(tz_mins));
-    }
+    snprintf(timezone_text, sizeof(timezone_text), "GMT+%d", abs(timezone_offset));
   }
   text_layer_set_text(which_layer, timezone_text);
 }
 
-void process_show_week() { // LEFT
+void process_show_week() {
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function process_shoe_week"); }
   switch ( settings.show_week ) {
   case 0: // Hide
     //layer_set_hidden(text_layer_get_layer(week_layer), true);
@@ -726,19 +846,11 @@ void process_show_week() { // LEFT
   case 3: // Show AM/PM
     update_ampm_text(week_layer);
     break;
-  case 4: // Show Day of Year
-    update_doy_text(week_layer);
-    break;
-  case 5: // Show Days Left in Year
-    update_dliy_text(week_layer);
-    break;
-  case 6: // Show Seconds
-    update_seconds_text(week_layer);
-    break;
   }
 }
 
-void process_show_day() { // MIDDLE
+void process_show_day() {
+//if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function process_show_days"); }
   switch ( settings.show_day ) {
   case 0: // Hide
     //layer_set_hidden(text_layer_get_layer(day_layer), true);
@@ -758,13 +870,11 @@ void process_show_day() { // MIDDLE
   case 5: // Show AM/PM
     update_ampm_text(day_layer);
     break;
-  case 6: // Show DoY/DLiY
-    update_doy_dliy_text(day_layer);
-    break;
   }
 }
 
-void process_show_ampm() { // RIGHT
+void process_show_ampm() {
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function process_show_ampm"); }
   switch ( settings.show_am_pm ) {
   case 0: // Hide
     //layer_set_hidden(text_layer_get_layer(ampm_layer), true);
@@ -778,64 +888,70 @@ void process_show_ampm() { // RIGHT
   case 3: // Show Week
     update_week_text(ampm_layer);
     break;
-  case 4: // Show Day of Year
-    update_doy_text(ampm_layer);
-    break;
-  case 5: // Show Days Left in Year
-    update_dliy_text(ampm_layer);
-    break;
-  case 6: // Show Seconds
-    update_seconds_text(ampm_layer);
-    break;
   }
-}
-
-void position_connection_layer() {
-  static int connection_vert_offset = 0;
-  // potentially adjust the connection position, depending on language/font
-  if ( strcmp(lang_gen.language,"EN") == 0 ) { // Standard font
-    connection_vert_offset = 0;
-  } else if ( strcmp(lang_gen.language,"RU") == 0 ) { // Unicode font w/ Cyrillic characters
-    connection_vert_offset = 2;
-  }
-  layer_set_frame( text_layer_get_layer(text_connection_layer), GRect(20+STAT_BT_ICON_LEFT, connection_vert_offset, 72, 22) );
-}
-
-void position_date_layer() {
-  static int date_vert_offset = 0;
-  // potentially adjust the date position, depending on language/font
-  if ( strcmp(lang_gen.language,"EN") == 0 ) { // Standard font
-    date_vert_offset = -9;
-  } else if ( strcmp(lang_gen.language,"RU") == 0 ) { // Unicode font w/ Cyrillic characters
-    date_vert_offset = -4;
-  }
-  layer_set_frame( text_layer_get_layer(date_layer), GRect(REL_CLOCK_DATE_LEFT, REL_CLOCK_DATE_TOP + date_vert_offset, DEVICE_WIDTH, REL_CLOCK_DATE_HEIGHT) );
-}
-
-void position_day_layer() {
-  // potentially adjust the day position, depending on language/font
-  static int day_vert_offset = 0;
-  if ( strcmp(lang_gen.language,"EN") == 0 ) { // Standard font
-    day_vert_offset = 0;
-  } else if ( strcmp(lang_gen.language,"RU") == 0 ) { // Unicode font w/ Cyrillic characters
-    day_vert_offset = -2;
-  }
-  layer_set_frame( text_layer_get_layer(day_layer), GRect(REL_CLOCK_DATE_LEFT, REL_CLOCK_SUBTEXT_TOP + day_vert_offset, DEVICE_WIDTH, REL_CLOCK_DATE_HEIGHT) );
 }
 
 void position_time_layer() {
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function position_time_layer"); }
   // potentially adjust the clock position, if we've added/removed the week, day, or AM/PM layers
-  static int time_offset = 0;
-  if (!settings.show_day && !settings.show_week) {
-    time_offset = 4;
-    if (!settings.show_am_pm) {
-      time_offset = 8;
-    }
-  }
-  layer_set_frame( text_layer_get_layer(time_layer), GRect(REL_CLOCK_TIME_LEFT, REL_CLOCK_TIME_TOP + time_offset, DEVICE_WIDTH, REL_CLOCK_TIME_HEIGHT) );
+
+	int time_offset = 0;
+	int date_offset = 0;
+	
+	if(settings.default_font==0){
+		if (!settings.show_day && !settings.show_week){
+			text_layer_set_font(time_layer, futura60);  
+		}else{
+			text_layer_set_font(time_layer, futura48);  
+		}
+	}
+	if(settings.default_font==1){
+		text_layer_set_font(time_layer, roboto49);  
+	}
+	
+	if (!settings.show_day && !settings.show_week) {
+		if(settings.default_font==0){
+			if (settings.data_over_time==0){
+				time_offset=-8;
+				date_offset=4;
+			}
+			if (settings.data_over_time==1){
+				time_offset = -4;
+				date_offset = 4;
+			}
+		}
+		if(settings.default_font==1){
+			if (settings.data_over_time==0){
+				// +
+			}
+			if (settings.data_over_time==1){
+				//+
+			}
+		}
+	} else {
+		if(settings.default_font==0){
+			if (settings.data_over_time==0){
+				//+
+			}
+			if (settings.data_over_time==1){
+				//+
+			}
+		}
+		if(settings.default_font==1){
+			if (settings.data_over_time==0){
+				date_offset =-2;
+			}
+			if (settings.data_over_time==1){
+			}
+		}
+	}
+	
+	layer_set_frame( text_layer_get_layer(time_layer), GRect(REL_CLOCK_TIME_LEFT, REL_CLOCK_TIME_TOP + time_offset, DEVICE_WIDTH, REL_CLOCK_TIME_HEIGHT) );
+	layer_set_frame( text_layer_get_layer(date_layer), GRect(REL_CLOCK_DATE_LEFT, REL_CLOCK_DATE_TOP + date_offset, DEVICE_WIDTH, REL_CLOCK_DATE_HEIGHT) );	
 }
 
 void update_datetime_subtext() {
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function update_datetime_subtext"); }
     process_show_week();
     process_show_day();
     process_show_ampm();
@@ -843,6 +959,7 @@ void update_datetime_subtext() {
 }
 
 void datetime_layer_update_callback(Layer *me, GContext* ctx) {
+
     (void)me;
 
     setColors(ctx);
@@ -877,7 +994,7 @@ void slot_bot_layer_update_callback(Layer *me, GContext* ctx) {
 // TODO: configurable: draw appropriate slot
 }
 
-void battery_layer_update_callback(Layer *me, GContext* ctx) {
+/*void battery_layer_update_callback(Layer *me, GContext* ctx) {
 // simply draw the battery outline here - the text is a different layer, and we then 'fill' it with an inverterLayer
   setColors(ctx);
 // battery outline
@@ -887,74 +1004,91 @@ void battery_layer_update_callback(Layer *me, GContext* ctx) {
                                 STAT_BATT_TOP + (STAT_BATT_HEIGHT - STAT_BATT_NIB_HEIGHT)/2,
                                 STAT_BATT_NIB_WIDTH,
                                 STAT_BATT_NIB_HEIGHT));
-}
+}*/
 
-static void request_timezone(void *data) {
+static void request_timezone() {
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function request_timezone"); }
   DictionaryIterator *iter;
   AppMessageResult result = app_message_outbox_begin(&iter);
   if (iter == NULL) {
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "iterator is null: %d", result); }
+    if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "iterator is null: %d", result); }
     return;
   }
   if (dict_write_uint8(iter, AK_MESSAGE_TYPE, AK_TIMEZONE_OFFSET) != DICT_OK) {
     return;
   }
   app_message_outbox_send();
-  timezone_request = NULL;
 }
 
-static void watch_version_send(void *data) {
+/*static void getPhoneBatteryState(){
   DictionaryIterator *iter;
+  app_message_outbox_begin(&iter);
+  long svbs=1;
+  Tuplet value1 = TupletInteger(AK_SEND_PHONE_BATTERY_REQUEST,svbs);
+  dict_write_tuplet(iter, &value1); 
+  app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "battery sending request to phone");
+  app_message_outbox_send();  
+}*/
 
+
+/*static void sendBatteryState(){
+  DictionaryIterator *iter;
   AppMessageResult result = app_message_outbox_begin(&iter);
-
+  
   if (iter == NULL) {
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "iterator is null: %d", result); }
+    app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "iterator is null: %d",result); 
     return;
   }
-
+  
   if (result != APP_MSG_OK) {
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Dict write failed to open outbox: %d", (AppMessageResult) result); }
+    app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Dict write failed to open outbox: %d", (AppMessageResult) result); 
     return;
+  }  
+  long svbs=battery_percent;
+  if(dict_write_int(iter,AK_SEND_BATTERY_VALUE,&svbs,sizeof(int),true)!=DICT_OK){
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Dict write failed AK_SEND_BATTERY_VALUE"); 
   }
-
-  if (dict_write_uint8(iter, AK_MESSAGE_TYPE, AK_SEND_WATCH_VERSION) != DICT_OK) {
-    return;
+  int sv = 0;
+  if (battery_charging){ sv=1;};
+  if(dict_write_int(iter,AK_SEND_BATTERY_CHARGING,&sv,sizeof(int),true)!=DICT_OK){
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Dict write failed AK_SEND_BATTERY_CHARGING"); 
   }
-  if (dict_write_uint8(iter, AK_SEND_WATCH_VERSION, settings.version) != DICT_OK) {
-    return;
-  }
-  if (dict_write_cstring(iter, AK_SEND_CONFIG_VERSION, "2.2.0") != DICT_OK) {
-    return;
-  }
-  app_message_outbox_send();
-}
+  app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "battery sending %d %d ",battery_percent, sv);
+  app_message_outbox_send();  
+}*/
 
 static void battery_status_send(void *data) {
-  if (!settings.track_battery) {
-    return; // if user has chosen not to track battery (saves power w/ appmessages)
-  }
+
+//	if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "battery status send incom"); }
   if ( (battery_percent  == sent_battery_percent  )
      & (battery_charging == sent_battery_charging )
-     & (battery_plugged  == sent_battery_plugged  ) ) {
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "repeat battery reading"); }
+     & (battery_plugged  == sent_battery_plugged  ) 
+	 & (pebble_on_phone_battery_percent == battery_percent)
+	 & (pebble_on_phone_battery_charging == battery_charging)	 
+	 ) {
+    if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "repeat battery reading"); }
     battery_sending = NULL;
     return; // no need to resend the same value
   }
+//  sendBatteryState();
   DictionaryIterator *iter;
 
   AppMessageResult result = app_message_outbox_begin(&iter);
 
   if (iter == NULL) {
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "iterator is null: %d", result); }
+    if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "iterator is null: %d", result); }
     return;
   }
 
   if (result != APP_MSG_OK) {
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Dict write failed to open outbox: %d", (AppMessageResult) result); }
+    if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Dict write failed to open outbox: %d", (AppMessageResult) result); }
     return;
   }
 
+  if (dict_write_int8(iter, SM_SCREEN_ENTER_KEY, STATUS_SCREEN_APP) != DICT_OK){
+	return;
+  }
+  
   if (dict_write_uint8(iter, AK_MESSAGE_TYPE, AK_SEND_BATT_PERCENT) != DICT_OK) {
     return;
   }
@@ -967,57 +1101,211 @@ static void battery_status_send(void *data) {
   if (dict_write_uint8(iter, AK_SEND_BATT_PLUGGED, battery_plugged ? 1: 0) != DICT_OK) {
     return;
   }
+  if(dict_write_int(iter,AK_SEND_BATTERY_VALUE,&battery_percent,sizeof(uint8_t),true)!=DICT_OK){
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Dict write failed AK_SEND_BATTERY_VALUE"); 
+  }
+  int sv = 0;
+  if (battery_charging){ sv=1;};
+  if(dict_write_int(iter,AK_SEND_BATTERY_CHARGING,&sv,sizeof(int),true)!=DICT_OK){
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Dict write failed AK_SEND_BATTERY_CHARGING"); 
+  }
+  sv = 0;
+  if (battery_plugged) {sv=1;};
+  if(dict_write_int(iter,AK_SEND_BATTERY_PLUGGED,&sv,sizeof(int),true)!=DICT_OK){
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Dict write failed AK_SEND_BATTERY_CHARGING"); 
+  }
+  
+  if(dict_write_int(iter,AK_SEND_PHONE_BATTERY_REQUEST,&sv,sizeof(int),true)!=DICT_OK){
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Dict write failed AK_SEND_BATTERY_CHARGING"); 
+  }  
+  
   app_message_outbox_send();
   sent_battery_percent  = battery_percent;
   sent_battery_charging = battery_charging;
   sent_battery_plugged  = battery_plugged;
   battery_sending = NULL;
+//  sendBatteryState();
+//  getPhoneBatteryState();
+
+}
+static void fn_battery_blink(void *data){
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "battery blink timer"); 
+	battery_blink = !battery_blink;
+	at_battery_blink = NULL;
+	layer_mark_dirty(bitmap_layer_get_layer(pp_battpebble_status));
+//	at_battery_blink = app_timer_register(1000, &fn_battery_blink, NULL);
 }
 
-static void handle_battery(BatteryChargeState charge_state) {
-  static char battery_text[] = "100";
+void pp_battpebble_status_callback(Layer *me, GContext* ctx) {
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function pp_battpeble_status_calback"); }
+	int prc=battery_percent;
+	int hgth = (int)prc/(100/13);
+	setColors(ctx);
+	graphics_draw_bitmap_in_rect(ctx,battpebble,GRect(0,0,22,20));
+	if(battery_blink){
+		if (battery_charging && battery_plugged){
+			graphics_draw_bitmap_in_rect(ctx,batt_charging,GRect(0,8,11,11));
+		}else{
+			if (battery_plugged){
+				graphics_draw_bitmap_in_rect(ctx,batt_pluged,GRect(0,8,11,11));	
+			}
+		}
+	}
+	setInvColors(ctx);
+	graphics_fill_rect(ctx, GRect (13,16-hgth,5,hgth), 0, GCornerNone);
+	if (battery_charging || battery_plugged){	
+		if(at_battery_blink == NULL){
+			at_battery_blink = app_timer_register(1000, &fn_battery_blink, NULL);	
+		}
+	}else{
+		at_battery_blink = NULL;	
+	}
+}
 
-  battery_percent = charge_state.charge_percent;
-  uint8_t battery_meter = battery_percent/10*(STAT_BATT_WIDTH-4)/10;
-  battery_charging = charge_state.is_charging;
-  battery_plugged = charge_state.is_plugged;
+void pp_battphone_status_callback(Layer *me, GContext* ctx) {
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function ppbattphone_status_callback"); }
+	int prc=phone_battery_percent;
+	int hgth = (int)prc/(100/13);
+	setColors(ctx);
+	graphics_draw_bitmap_in_rect(ctx,battphone,GRect(0,0,22,20));
+	if (phone_battery_charging && phone_battery_plugged){
+		graphics_draw_bitmap_in_rect(ctx,batt_charging,GRect(0,8,11,11));
+	}else{ 
+		if (phone_battery_plugged){
+			graphics_draw_bitmap_in_rect(ctx,batt_pluged,GRect(0,8,11,11));	
+		}
+	}	
+	setInvColors(ctx);
+	graphics_fill_rect(ctx, GRect (13,16-hgth,5,hgth), 0, GCornerNone);	
+}
 
+void incom_sms_show(){
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function incom_sms_show"); }
+	if(sms_incom_count>0){
+		layer_set_hidden(bitmap_layer_get_layer(sms_incom_layer),false);
+	}else{
+		layer_set_hidden(bitmap_layer_get_layer(sms_incom_layer),true);
+	}
+}
+
+void incom_calls_show(){
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function incom_calls_show"); }
+	if(calls_incom_count>0){
+		layer_set_hidden(bitmap_layer_get_layer(calls_incom_layer),false);
+	}else{
+		layer_set_hidden(bitmap_layer_get_layer(calls_incom_layer),true);
+	}
+}
+
+
+static void show_battery_state(){
+//if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function show_battery_state"); }
+//  static char battery_text[] = "100/100";
+//  uint8_t battery_meter = battery_percent/10*(STAT_BATT_WIDTH-4)/10;
   // fill it in with current power
-  layer_set_bounds(inverter_layer_get_layer(battery_meter_layer), GRect(STAT_BATT_LEFT+2, STAT_BATT_TOP+2, battery_meter, STAT_BATT_HEIGHT-4));
-  layer_set_hidden(inverter_layer_get_layer(battery_meter_layer), false);
+//  layer_set_bounds(inverter_layer_get_layer(battery_meter_layer), GRect(STAT_BATT_LEFT+2, STAT_BATT_TOP+2, battery_meter, STAT_BATT_HEIGHT-4));
+//  layer_set_hidden(inverter_layer_get_layer(battery_meter_layer), false);
 
-  //if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "battery reading"); }
   if (battery_sending == NULL) {
     // multiple battery events can fire in rapid succession, we'll let it settle down before logging it
     battery_sending = app_timer_register(5000, &battery_status_send, NULL);
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "battery timer queued"); }
+    if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "battery timer queued"); }
   }
+  
+ /* if(phone_battery_percent==0){
+	if (battery_charging || phone_battery_charging) { // charging
+		layer_set_hidden(bitmap_layer_get_layer(bmp_charging_layer), false);
+		bitmap_layer_set_bitmap(bmp_charging_layer, image_charging_icon);
+	} else { // not charging
+		if (battery_plugged) { // plugged but not charging = charging complete...
+		layer_set_hidden(bitmap_layer_get_layer(bmp_charging_layer), true);
+		} else { // normal wear
+		if (settings.vibe_hour) {
+			layer_set_hidden(bitmap_layer_get_layer(bmp_charging_layer), false);
+			bitmap_layer_set_bitmap(bmp_charging_layer, image_hourvibe_icon);
+		} else {
+			layer_set_hidden(bitmap_layer_get_layer(bmp_charging_layer), true);
+		}
+		}
+	}
+	layer_set_hidden(bitmap_layer_get_layer(pp_battphone_status), true);
+	layer_set_hidden(bitmap_layer_get_layer(pp_battpebble_status), true);
+  	  if(battery_percent<settings.battery_show){
+		layer_set_hidden(text_layer_get_layer(text_battery_layer), false);
+		layer_set_hidden(battery_layer, false);		
+		layer_set_hidden(inverter_layer_get_layer(battery_meter_layer),false);
+	  }else{
+		layer_set_hidden(text_layer_get_layer(text_battery_layer), true);	  
+		layer_set_hidden(battery_layer, true);				
+		layer_set_hidden(inverter_layer_get_layer(battery_meter_layer),true);		
+	  }
+  } else{*/
+		if (settings.vibe_hour) {
+			layer_set_hidden(bitmap_layer_get_layer(bmp_charging_layer), false);
+			bitmap_layer_set_bitmap(bmp_charging_layer, image_hourvibe_icon);
+		} else {
+			layer_set_hidden(bitmap_layer_get_layer(bmp_charging_layer), true);
+		}
+  
+	if(battery_percent<settings.battery_show || battery_charging || battery_plugged){
+		layer_set_hidden(bitmap_layer_get_layer(pp_battpebble_status), false);
+		layer_mark_dirty(bitmap_layer_get_layer(pp_battpebble_status));
+	}else{
+		layer_set_hidden(bitmap_layer_get_layer(pp_battpebble_status), true);	
+	}
+	if((phone_battery_percent<settings.phone_battery_show || phone_battery_charging || phone_battery_plugged) && phone_battery_percent>0 ){
+		layer_set_hidden(bitmap_layer_get_layer(pp_battphone_status), false);
+		layer_mark_dirty(bitmap_layer_get_layer(pp_battphone_status)); 
+	}else{
+		layer_set_hidden(bitmap_layer_get_layer(pp_battphone_status), true);	
+	}
+  
+/*		layer_set_hidden(text_layer_get_layer(text_battery_layer), true);	  
+		layer_set_hidden(battery_layer, true);				
+		layer_set_hidden(inverter_layer_get_layer(battery_meter_layer),true);		
+	
+  }*/
+	
 
-  if (charge_state.is_charging) { // charging
-    layer_set_hidden(bitmap_layer_get_layer(bmp_charging_layer), false);
-    bitmap_layer_set_bitmap(bmp_charging_layer, image_charging_icon);
-  } else { // not charging
-    if (charge_state.is_plugged) { // plugged but not charging = charging complete...
-      layer_set_hidden(bitmap_layer_get_layer(bmp_charging_layer), true);
-    } else { // normal wear
-      if (settings.vibe_hour) {
-        layer_set_hidden(bitmap_layer_get_layer(bmp_charging_layer), false);
-        bitmap_layer_set_bitmap(bmp_charging_layer, image_hourvibe_icon);
-      } else {
-        layer_set_hidden(bitmap_layer_get_layer(bmp_charging_layer), true);
-      }
-    }
+//	snprintf(battery_text, sizeof(battery_text), "%d", battery_percent);  
+
+//  text_layer_set_text(text_battery_layer, battery_text);
+  
+   
+}
+
+
+
+static void handle_battery(BatteryChargeState charge_state) {
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function handle_battery"); }
+  battery_percent = charge_state.charge_percent;
+  battery_charging = charge_state.is_charging;
+  battery_plugged = charge_state.is_plugged;
+  if (battery_charging || battery_plugged){
+	if(at_battery_blink == NULL){
+		at_battery_blink = app_timer_register(1000, &fn_battery_blink, NULL);
+	}
+  }else{
+	at_battery_blink = NULL;
   }
-  snprintf(battery_text, sizeof(battery_text), "%d", charge_state.charge_percent);
-  text_layer_set_text(text_battery_layer, battery_text);
-  layer_mark_dirty(battery_layer);
+  show_battery_state(NULL);
+}
+
+static void accel_starting(void *data) {
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "accel_starting");
+	is_accel_stoped = false;
+	accel_start = NULL;
 }
 
 void generate_vibe(uint32_t vibe_pattern_number) {
   if (vibe_suppression) { return; }
+  is_accel_stoped = true;
+  accel_start = NULL;
+  accel_start = app_timer_register(2000, &accel_starting, NULL);
   vibes_cancel();
   switch ( vibe_pattern_number ) {
   case 0: // No Vibration
+//	is_accel_stoped = false;
     return;
   case 1: // Single short
     vibes_short_pulse();
@@ -1052,75 +1340,99 @@ void generate_vibe(uint32_t vibe_pattern_number) {
     } );
     break;
   default: // No Vibration
+//	is_accel_stoped = false;
     return;
   }
+//  is_accel_stoped = false;
 }
 
 void update_connection() {
-  text_layer_set_text(text_connection_layer, bluetooth_connected ? lang_gen.statuses[0] : lang_gen.statuses[1]) ;
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function update_connection"); }
+//  text_layer_set_text(text_connection_layer, bluetooth_connected ? lang_gen.statuses[0] : lang_gen.statuses[1]) ;
   if (bluetooth_connected) {
     generate_vibe(settings.vibe_pat_connect);  // non-op, by default
     bitmap_layer_set_bitmap(bmp_connection_layer, image_connection_icon);
+	is_inet_connected = true;
   } else {
     generate_vibe(settings.vibe_pat_disconnect);  // because, this is bad...
     bitmap_layer_set_bitmap(bmp_connection_layer, image_noconnection_icon);
+	layer_set_hidden(bitmap_layer_get_layer(sms_incom_layer), true);
+	layer_set_hidden(bitmap_layer_get_layer(calls_incom_layer), true);	
+	phone_battery_percent =0;
+	is_inet_connected = false;
+	show_battery_state();
   }
 }
 
 static void handle_bluetooth(bool connected) {
-  if (bluetooth_connected != connected) {
-    bluetooth_connected = connected;
-    update_connection();
-    if (bluetooth_connected == true) {
-      if ( (timezone_request == NULL) & (timezone_offset == TIMEZONE_UNINITIALIZED) ) {
-        timezone_request = app_timer_register(5000, &request_timezone, NULL); // give it time to settle...
-        if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "timezone request timer queued"); }
-      }
-    }
-  }
-}
-
-static void set_unifont() {
-  if ( strcmp(lang_gen.language,"EN") == 0 ) { // Standard font
-    // set fonts...
-    text_layer_set_font(day_layer,fonts_get_system_font(FONT_KEY_GOTHIC_14));
-    text_layer_set_font(text_connection_layer,fonts_get_system_font(FONT_KEY_GOTHIC_18));
-    text_layer_set_font(date_layer,fonts_get_system_font(FONT_KEY_GOTHIC_24));
-    // set fonts, for calendar
-    cal_normal = fonts_get_system_font(FONT_KEY_GOTHIC_14); // fh = 16
-    cal_bold   = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD); // fh = 22
-  } else if ( strcmp(lang_gen.language,"RU") == 0 ) { // Unicode font w/ Cyrillic characters
-    // set fonts...
-    text_layer_set_font(day_layer,unifont_14);
-    text_layer_set_font(text_connection_layer, unifont_18);
-    text_layer_set_font(date_layer, unifont_24);
-    // set fonts, for calendar
-    cal_normal = unifont_14; // fh = 16
-    cal_bold   = unifont_18_bold; // fh = 22 // XXX TODO need a bold unicode/unifont option... maybe invert it or box it or something?
-  }
-  // set offsets...
-  position_connection_layer();
-  position_date_layer();
-  position_time_layer();
-  position_day_layer();
+	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function handle_bluetooth"); }
+  bluetooth_connected = connected;
+  update_connection();
 }
 
 static void window_load(Window *window) {
 
-  unifont_14 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_UNICODE_FB_16));
-  unifont_18 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_UNICODE_FB_16));
-  unifont_18_bold = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_UNICODE_FB_BOLD_16));
-  unifont_24 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_UNICODE_FB_16));
-  cal_normal = unifont_14;
-  cal_bold   = unifont_18_bold;
+  futura48 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DIGITAL_SEVEN_48));
+  futura60 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DIGITAL_SEVEN_60));  
+  futura24 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DIGITAL_SEVEN_20));
+  futura35 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_FUTURA_40));
 
+
+   gothic24 = fonts_get_system_font(FONT_KEY_GOTHIC_24);		
+   roboto49 = fonts_get_system_font(FONT_KEY_ROBOTO_BOLD_SUBSET_49);
+   gothic28	= fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_FUTURA_30));  
+
+  
+
+  
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
+  
+  
+  
+  // weather
+  
+    weather_layer = layer_create(GRect(0, 90, 144, 80));
+    
+    weather_icon_layer = bitmap_layer_create(GRect(9, 8, 60, 60));
+    layer_add_child(weather_layer, bitmap_layer_get_layer(weather_icon_layer));
+    
+    weather_temperature_layer = text_layer_create(GRect(70, 12, 72, 80));
+    text_layer_set_text_color(weather_temperature_layer, GColorWhite);
+    text_layer_set_background_color(weather_temperature_layer, GColorClear);
+    text_layer_set_font(weather_temperature_layer, futura35);
+    text_layer_set_text_alignment(weather_temperature_layer, GTextAlignmentCenter);
+    layer_add_child(weather_layer, text_layer_get_layer(weather_temperature_layer));
+	text_layer_set_text(weather_temperature_layer, "");
+	
+	weather_name_layer = text_layer_create(GRect(0,60,144,15));
+	text_layer_set_text_color(weather_name_layer, GColorWhite);
+    text_layer_set_background_color(weather_name_layer, GColorClear);
+//	text_layer_set_font(weather_name_layer, futura24);
+	text_layer_set_font(weather_name_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
+	text_layer_set_text_alignment(weather_name_layer, GTextAlignmentCenter);
+	text_layer_set_overflow_mode(weather_name_layer, GTextOverflowModeFill);
+	layer_add_child(weather_layer, text_layer_get_layer(weather_name_layer));
+	text_layer_set_text(weather_name_layer,lang_gen.getposition);
+
+	weather_time_layer = text_layer_create(GRect(50,50,94,15));
+	text_layer_set_text_color(weather_time_layer, GColorWhite);
+    text_layer_set_background_color(weather_time_layer, GColorClear);
+	text_layer_set_font(weather_time_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
+	text_layer_set_text_alignment(weather_time_layer, GTextAlignmentRight);
+	text_layer_set_overflow_mode(weather_time_layer, GTextOverflowModeFill);
+	layer_add_child(weather_layer, text_layer_get_layer(weather_time_layer));
+//	text_layer_set_text(weather_time_layer,"Обновл..");
+
+	
+    layer_add_child(window_layer, weather_layer);  
+  
+
   //statusbar = layer_create(GRect(0,LAYOUT_STAT,DEVICE_WIDTH,LAYOUT_SLOT_TOP));
   statusbar = layer_create(GRect(0,0,DEVICE_WIDTH,DEVICE_HEIGHT));
   layer_set_update_proc(statusbar, statusbar_layer_update_callback);
   layer_add_child(window_layer, statusbar);
-  GRect stat_bounds = layer_get_bounds(statusbar);
+//  GRect stat_bounds = layer_get_bounds(statusbar);
 
   slot_top = layer_create(GRect(0,LAYOUT_SLOT_TOP,DEVICE_WIDTH,LAYOUT_SLOT_BOT));
   layer_set_update_proc(slot_top, slot_top_layer_update_callback);
@@ -1147,9 +1459,40 @@ static void window_load(Window *window) {
     layer_set_hidden(bitmap_layer_get_layer(bmp_charging_layer), true);
   }
 
-  battery_layer = layer_create(stat_bounds);
-  layer_set_update_proc(battery_layer, battery_layer_update_callback);
-  layer_add_child(statusbar, battery_layer);
+//  battery_layer = layer_create(stat_bounds);
+//  layer_set_update_proc(battery_layer, battery_layer_update_callback);
+//  layer_add_child(statusbar, battery_layer);
+
+  sms_incom_layer = bitmap_layer_create(GRect(STAT_BT_ICON_LEFT+25, STAT_BT_ICON_TOP, 20, 20));
+  layer_add_child(statusbar, bitmap_layer_get_layer(sms_incom_layer));
+  sms_incom = gbitmap_create_with_resource(RESOURCE_ID_SMS_INCOM);
+  bitmap_layer_set_bitmap(sms_incom_layer, sms_incom);
+  layer_set_hidden(bitmap_layer_get_layer(sms_incom_layer), true);
+  
+  calls_incom_layer = bitmap_layer_create(GRect(STAT_BT_ICON_LEFT+45, STAT_BT_ICON_TOP, 20, 20));
+  layer_add_child(statusbar, bitmap_layer_get_layer(calls_incom_layer));
+  calls_incom = gbitmap_create_with_resource(RESOURCE_ID_CALLS_INCOM);
+  bitmap_layer_set_bitmap(calls_incom_layer, calls_incom);
+  layer_set_hidden(bitmap_layer_get_layer(calls_incom_layer), true);  
+  
+  pp_battphone_status = bitmap_layer_create( GRect(STAT_BATT_LEFT, STAT_BATT_TOP, 22, 20) );
+  layer_set_update_proc(bitmap_layer_get_layer(pp_battphone_status), pp_battphone_status_callback);
+  pp_battpebble_status = bitmap_layer_create( GRect(STAT_BATT_LEFT+22, STAT_BATT_TOP, 22, 20) );  
+  layer_set_update_proc(bitmap_layer_get_layer(pp_battpebble_status), pp_battpebble_status_callback);
+  
+  
+  
+  layer_add_child(statusbar, bitmap_layer_get_layer(pp_battphone_status));
+  layer_add_child(statusbar, bitmap_layer_get_layer(pp_battpebble_status));  
+  layer_set_hidden(bitmap_layer_get_layer(pp_battphone_status), true);
+  layer_set_hidden(bitmap_layer_get_layer(pp_battpebble_status), true);
+  battphone = gbitmap_create_with_resource(RESOURCE_ID_BAT_PHONE);
+  battpebble = gbitmap_create_with_resource(RESOURCE_ID_BAT_PEBBLE);
+  batt_charging = gbitmap_create_with_resource(RESOURCE_ID_CHARGING);
+  batt_pluged = gbitmap_create_with_resource(RESOURCE_ID_PLUGED);
+//  bitmap_layer_set_bitmap(pp_battphone_status, battphone);
+//  bitmap_layer_set_bitmap(pp_battpebble_status, battpebble);
+  
 
   datetime_layer = layer_create(slot_top_bounds);
   layer_set_update_proc(datetime_layer, datetime_layer_update_callback);
@@ -1159,18 +1502,19 @@ static void window_load(Window *window) {
   layer_set_update_proc(calendar_layer, calendar_layer_update_callback);
   layer_add_child(slot_bot, calendar_layer);
 
-  date_layer = text_layer_create( GRect(REL_CLOCK_DATE_LEFT, REL_CLOCK_DATE_TOP, DEVICE_WIDTH, REL_CLOCK_DATE_HEIGHT) ); // see position_date_layer()
+  date_layer = text_layer_create( GRect(REL_CLOCK_DATE_LEFT, REL_CLOCK_DATE_TOP, DEVICE_WIDTH, REL_CLOCK_DATE_HEIGHT) );
   text_layer_set_text_color(date_layer, GColorWhite);
   text_layer_set_background_color(date_layer, GColorClear);
-  text_layer_set_font(date_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24));
+  text_layer_set_font(date_layer, futura24);
   text_layer_set_text_alignment(date_layer, GTextAlignmentCenter);
-  position_date_layer(); // depends on font/language
   layer_add_child(datetime_layer, text_layer_get_layer(date_layer));
 
+
+  
   time_layer = text_layer_create( GRect(REL_CLOCK_TIME_LEFT, REL_CLOCK_TIME_TOP, DEVICE_WIDTH, REL_CLOCK_TIME_HEIGHT) ); // see position_time_layer()
   text_layer_set_text_color(time_layer, GColorWhite);
   text_layer_set_background_color(time_layer, GColorClear);
-  text_layer_set_font(time_layer, fonts_get_system_font(FONT_KEY_ROBOTO_BOLD_SUBSET_49));
+  text_layer_set_font(time_layer, futura48);
   text_layer_set_text_alignment(time_layer, GTextAlignmentCenter);
   position_time_layer(); // make use of our whitespace, if we have it...
   layer_add_child(datetime_layer, text_layer_get_layer(time_layer));
@@ -1185,12 +1529,11 @@ static void window_load(Window *window) {
     layer_set_hidden(text_layer_get_layer(week_layer), true);
   }
 
-  day_layer = text_layer_create( GRect(4, REL_CLOCK_SUBTEXT_TOP, 140, 18) ); // see position_day_layer()
+  day_layer = text_layer_create( GRect(28, REL_CLOCK_SUBTEXT_TOP, DEVICE_WIDTH - 56, 16) );
   text_layer_set_text_color(day_layer, GColorWhite);
   text_layer_set_background_color(day_layer, GColorClear);
   text_layer_set_font(day_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
   text_layer_set_text_alignment(day_layer, GTextAlignmentCenter);
-  position_day_layer(); // depends on font/language
   layer_add_child(datetime_layer, text_layer_get_layer(day_layer));
   if ( settings.show_day == 0 ) {
     layer_set_hidden(text_layer_get_layer(day_layer), true);
@@ -1208,48 +1551,69 @@ static void window_load(Window *window) {
 
   update_datetime_subtext();
 
-  text_connection_layer = text_layer_create( GRect(20+STAT_BT_ICON_LEFT, 0, 72, 22) ); // see position_connection_layer()
-  text_layer_set_text_color(text_connection_layer, GColorWhite);
-  text_layer_set_background_color(text_connection_layer, GColorClear);
-  text_layer_set_font(text_connection_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
-  text_layer_set_text_alignment(text_connection_layer, GTextAlignmentLeft);
-  text_layer_set_text(text_connection_layer, "NO LINK");
-  position_connection_layer(); // depends on font/language
-  layer_add_child(statusbar, text_layer_get_layer(text_connection_layer));
+  //text_connection_layer = text_layer_create( GRect(20+STAT_BT_ICON_LEFT, 0, 72, 22) );
+  //text_layer_set_text_color(text_connection_layer, GColorWhite);
+  //text_layer_set_background_color(text_connection_layer, GColorClear);
+  //text_layer_set_font(text_connection_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  //text_layer_set_text_alignment(text_connection_layer, GTextAlignmentLeft);
+  //text_layer_set_text(text_connection_layer, "NO LINK");
+  //layer_add_child(statusbar, text_layer_get_layer(text_connection_layer));
 
-  text_battery_layer = text_layer_create( GRect(STAT_BATT_LEFT, STAT_BATT_TOP-2, STAT_BATT_WIDTH, STAT_BATT_HEIGHT) );
-  text_layer_set_text_color(text_battery_layer, GColorWhite);
-  text_layer_set_background_color(text_battery_layer, GColorClear);
-  text_layer_set_font(text_battery_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
-  text_layer_set_text_alignment(text_battery_layer, GTextAlignmentCenter);
-  text_layer_set_text(text_battery_layer, "?");
+ // text_battery_layer = text_layer_create( GRect(STAT_BATT_LEFT, STAT_BATT_TOP-2, STAT_BATT_WIDTH, STAT_BATT_HEIGHT) );
+//  text_layer_set_text_color(text_battery_layer, GColorWhite);
+//  text_layer_set_background_color(text_battery_layer, GColorClear);
+//  text_layer_set_font(text_battery_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
+//  text_layer_set_text_alignment(text_battery_layer, GTextAlignmentCenter);
+//  text_layer_set_text(text_battery_layer, "?");
 
-  layer_add_child(statusbar, text_layer_get_layer(text_battery_layer));
-
-  set_unifont();
+//  layer_add_child(statusbar, text_layer_get_layer(text_battery_layer));
 
   // NOTE: No more adding layers below here - the inverter layers NEED to be the last to be on top!
 
   // hide battery meter, until we can fix the size/position later when subscribing
-  battery_meter_layer = inverter_layer_create(stat_bounds);
-  layer_set_hidden(inverter_layer_get_layer(battery_meter_layer), true);
-  layer_add_child(statusbar, inverter_layer_get_layer(battery_meter_layer));
+//  battery_meter_layer = inverter_layer_create(stat_bounds);
+//  layer_set_hidden(inverter_layer_get_layer(battery_meter_layer), true);
+//  layer_add_child(statusbar, inverter_layer_get_layer(battery_meter_layer));
 
   // topmost inverter layer, determines dark or light...
   inverter_layer = inverter_layer_create(bounds);
   if (settings.inverted==0) {
     layer_set_hidden(inverter_layer_get_layer(inverter_layer), true);
+  }else{
+    layer_set_hidden(inverter_layer_get_layer(inverter_layer), false);  
   }
   layer_add_child(window_layer, inverter_layer_get_layer(inverter_layer));
-
+  
+  layer_set_hidden(calendar_layer, false);
+  layer_set_hidden(weather_layer, true);	
+//	change_preferences(NULL, prefs);
+   rotate_first_page();
 }
 
 static void window_unload(Window *window) {
   // unload anything we loaded, destroy anything we created, remove anything we added
+
+  if(weather_icon_bitmap)
+        gbitmap_destroy(weather_icon_bitmap);
+    text_layer_destroy(weather_temperature_layer);
+	text_layer_destroy(weather_name_layer);
+	text_layer_destroy(weather_time_layer);
+    bitmap_layer_destroy(weather_icon_layer);
+    layer_destroy(weather_layer);  
+  
+  fonts_unload_custom_font(futura48);	
+  fonts_unload_custom_font(futura60);	
+  fonts_unload_custom_font(futura24);  
+  fonts_unload_custom_font(futura35);  
+//  fonts_unload_custom_font(gothic24);
+  fonts_unload_custom_font(gothic28);
+//  fonts_unload_custom_font(roboto49);
+
+  
   layer_destroy(inverter_layer_get_layer(inverter_layer));
-  layer_destroy(inverter_layer_get_layer(battery_meter_layer));
-  layer_destroy(text_layer_get_layer(text_battery_layer));
-  layer_destroy(text_layer_get_layer(text_connection_layer));
+//  layer_destroy(inverter_layer_get_layer(battery_meter_layer));
+//  layer_destroy(text_layer_get_layer(text_battery_layer));
+//  layer_destroy(text_layer_get_layer(text_connection_layer));
   layer_destroy(text_layer_get_layer(ampm_layer));
   layer_destroy(text_layer_get_layer(day_layer));
   layer_destroy(text_layer_get_layer(week_layer));
@@ -1257,16 +1621,26 @@ static void window_unload(Window *window) {
   layer_destroy(text_layer_get_layer(date_layer));
   layer_destroy(calendar_layer);
   layer_destroy(datetime_layer);
-  layer_destroy(battery_layer);
-  // TODO - unload custom fonts...
+//  layer_destroy(battery_layer);
   layer_remove_from_parent(bitmap_layer_get_layer(bmp_charging_layer));
   layer_remove_from_parent(bitmap_layer_get_layer(bmp_connection_layer));
   bitmap_layer_destroy(bmp_charging_layer);
   bitmap_layer_destroy(bmp_connection_layer);
+  bitmap_layer_destroy(sms_incom_layer);
+  bitmap_layer_destroy(calls_incom_layer);
   gbitmap_destroy(image_connection_icon);
   gbitmap_destroy(image_noconnection_icon);
   gbitmap_destroy(image_charging_icon);
   gbitmap_destroy(image_hourvibe_icon);
+  gbitmap_destroy(batt_charging);  
+  gbitmap_destroy(sms_incom);  
+  gbitmap_destroy(calls_incom);    
+  
+  gbitmap_destroy(batt_pluged);  
+  bitmap_layer_destroy(pp_battphone_status);
+  bitmap_layer_destroy(pp_battpebble_status);
+  gbitmap_destroy(battphone);
+  gbitmap_destroy(battpebble);
   layer_destroy(slot_bot);
   layer_destroy(slot_top);
   layer_destroy(statusbar);
@@ -1274,6 +1648,7 @@ static void window_unload(Window *window) {
 
 static void deinit(void) {
   // deinit anything we init
+	
   bluetooth_connection_service_unsubscribe();
   battery_state_service_unsubscribe();
   tick_timer_service_unsubscribe();
@@ -1282,7 +1657,7 @@ static void deinit(void) {
 
 void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed)
 {
-  currentTime = tick_time;
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function handle_minute_tick"); }
   update_time_text();
 
   if (units_changed & MONTH_UNIT) {
@@ -1290,7 +1665,7 @@ void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed)
   }
 
   if (units_changed & HOUR_UNIT) {
-    request_timezone(NULL);
+    request_timezone();
     update_datetime_subtext();
     if (settings.vibe_hour) {
       generate_vibe(settings.vibe_hour);
@@ -1302,87 +1677,88 @@ void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed)
     layer_mark_dirty(calendar_layer);
   }
 
+  // weather
+  time_t now = time(NULL);
+
+  if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "HMT: %d %d", (int)settings.weather_upd,(int)(now - weather->last_update_time));};
+  if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "settings.type_position %s", settings.type_position);  };
+    if(weather_needs_update(weather, settings.weather_upd)){ // prefs->weather_update_freq))
+		if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "WAN HMT: %d", (int)settings.weather_upd);};
+		if(weather_now_loading==false){
+//			weather_now_loading=true;
+			if (is_inet_connected){
+				weather_request_update(settings.get_position,settings.type_position);
+			}
+		}
+  }
+//  if (get_phone_battery_state){
+//	get_phone_battery_state=false;
+//	sendBatteryState();
+//	getPhoneBatteryState();
+//  }
   // calendar gets redrawn every time because time_layer is changed and all layers are redrawn together.
-}
-
-void handle_second_tick(struct tm *tick_time, TimeUnits units_changed)
-{
-  // update the seconds layer(s)...
-  if (settings.show_week == 6) {
-    update_seconds_text(week_layer);
-  }
-  if (settings.show_am_pm == 6) {
-    update_seconds_text(ampm_layer);
-  }
-  // redraw everything else if the minute changes...
-  if (units_changed & MINUTE_UNIT) {
-    handle_minute_tick(tick_time, units_changed);
-  }
-}
-
-static int need_second_tick_handler(void) {
-  if ((settings.show_week == 6) || (settings.show_am_pm == 6)) { return 1; }
-  return 0; 
-}
-
-static void switch_tick_handler(void) {
-  tick_timer_service_unsubscribe(); // safe to call even before we've subscribed
-  seconds_shown = need_second_tick_handler();
-  if (seconds_shown) {
-    tick_timer_service_subscribe(SECOND_UNIT, &handle_second_tick);
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Seconds handler enabled"); }
-  } else {
-    tick_timer_service_subscribe(MINUTE_UNIT, &handle_minute_tick);
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Seconds handler disabled"); }
-  }
 }
 
 void my_out_sent_handler(DictionaryIterator *sent, void *context) {
 // outgoing message was delivered
-  if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "AppMessage Delivered"); }
 }
 void my_out_fail_handler(DictionaryIterator *failed, AppMessageResult reason, void *context) {
 // outgoing message failed
-  if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "AppMessage Failed to Send: %d", reason); }
+  /*if (DEBUGLOG)*/ { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "AppMessage Failed to Send: %d", reason); }
 }
 
 void in_timezone_handler(DictionaryIterator *received, void *context) {
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function in_timezone_handle"); }
     Tuple *tz_offset = dict_find(received, AK_TIMEZONE_OFFSET);
     if (tz_offset != NULL) {
       timezone_offset = tz_offset->value->int8;
-      update_datetime_subtext();
     }
-  if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Timezone received: %d", timezone_offset); }
+  if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Timezone received: %d", timezone_offset); }
+}
+
+void set_pos_data_over_time(){
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function set_pos_data_over_time"); }
+	if (settings.data_over_time==1){
+		REL_CLOCK_DATE_LEFT		=0;
+		REL_CLOCK_DATE_TOP		=-6;
+		REL_CLOCK_DATE_HEIGHT	=30; // date/time overlap, due to the way text is 'positioned'
+		REL_CLOCK_TIME_LEFT		=0;
+		REL_CLOCK_TIME_TOP		=7;
+		REL_CLOCK_TIME_HEIGHT	=60; // date/time overlap, due to the way text is 'positioned'
+		REL_CLOCK_SUBTEXT_TOP	=56;	
+	}else{
+		REL_CLOCK_DATE_LEFT		=0;
+		REL_CLOCK_DATE_TOP		=35;
+		REL_CLOCK_DATE_HEIGHT	=30; // date/time overlap, due to the way text is 'positioned'
+		REL_CLOCK_TIME_LEFT		=0;
+		REL_CLOCK_TIME_TOP		=-10;
+		REL_CLOCK_TIME_HEIGHT	=60; // date/time overlap, due to the way text is 'positioned'
+		REL_CLOCK_SUBTEXT_TOP	=56;	
+	}
+	layer_set_frame( text_layer_get_layer(time_layer), GRect(REL_CLOCK_TIME_LEFT, REL_CLOCK_TIME_TOP, DEVICE_WIDTH, REL_CLOCK_TIME_HEIGHT) );
+	layer_set_frame( text_layer_get_layer(date_layer), GRect(REL_CLOCK_DATE_LEFT, REL_CLOCK_DATE_TOP, DEVICE_WIDTH, REL_CLOCK_DATE_HEIGHT) );
 }
 
 void in_configuration_handler(DictionaryIterator *received, void *context) {
-    // debugging first (so we can catch this message)
-
-    // AK_DEBUGGING_ON == general debugging
-    Tuple *debugging = dict_find(received, AK_DEBUGGING_ON);
-    if (debugging != NULL) {
-      if (debugging->value->uint8 != 0) {
-        debug.general = true;
-        app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Debugging enabled.");
-      } else {
-        if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Debugging disabled."); }
-        debug.general = false;
-      } 
-    }
-
-    // AK_DEBUGLANG_ON == language / translation debugging
-    Tuple *debuglang = dict_find(received, AK_DEBUGLANG_ON);
-    if (debuglang != NULL) {
-      if (debuglang->value->uint8 != 0) {
-        debug.language = true;
-        if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Language debugging enabled."); }
-      } else {
-        debug.language = false;
-        if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Language debugging disabled."); }
-      } 
-    }
-
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function in_configuration_handler"); }
+	if (weather_in_cache()){
+		weather=weather_load_cache();
+	}
     // style_inv == inverted
+	
+	Tuple *data_over_time = dict_find(received , AK_DATA_OVER_TIME);
+	if(data_over_time != NULL)	{
+		settings.data_over_time = data_over_time->value->uint8;
+		set_pos_data_over_time();
+	}
+	Tuple *trans_week = dict_find(received, AK_TRANS_WEEK);
+	if(trans_week != NULL) {
+		static char tr_week[5]="\0";
+        snprintf(tr_week, sizeof(tr_week), "%s", trans_week->value->cstring);	
+		strncpy(lang_gen.week, tr_week, sizeof(tr_week));
+		update_week_text(week_layer);
+	}
+	
     Tuple *style_inv = dict_find(received, AK_STYLE_INV);
     if (style_inv != NULL) {
       settings.inverted = style_inv->value->uint8;
@@ -1392,7 +1768,77 @@ void in_configuration_handler(DictionaryIterator *received, void *context) {
         layer_set_hidden(inverter_layer_get_layer(inverter_layer), false); // show inversion = light
       }
     }
+	
+	// 
+	Tuple *degree_style = dict_find(received, AK_DEGREE_STYLE);
+	if (degree_style !=NULL) {
+      settings.degree_style = degree_style->value->uint8;
+      if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "degree_style %d",settings.degree_style);	};
+	  if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "location %s",weather->name);};
+      update_weather_info(weather);	  
+	}
+	
+	Tuple *first_page = dict_find(received, AK_FIRST_PAGE);
+	if (first_page !=NULL) {
+      settings.first_page = first_page->value->uint8;
+//	  show_calendar = (settings.first_page==1)? true:false;
+	  rotate_first_page();
+	}
+	
+	Tuple *weather_upd = dict_find(received, AK_WEATHER_UPD);
+	if (weather_upd !=NULL) {
+      settings.weather_upd = weather_upd->value->uint32;
+	  if(!weather_needs_update(weather, settings.weather_upd))
+		update_weather_info(weather);	  
+	  
+	}
+	
+	Tuple *battery_show = dict_find(received, AK_BATTERY_SHOW);
+	if (battery_show !=NULL) {
+      settings.battery_show = battery_show->value->uint32;
+	  show_battery_state();
+//	  battery_percent=battery_percent+1;
+//	  battery_status_send(NULL);
+	  
+	}
+	
+	Tuple *phone_battery_show = dict_find(received, AK_PHONE_BATTERY_SHOW);
+	if (phone_battery_show !=NULL) {
+      settings.phone_battery_show = phone_battery_show->value->uint32;
+	  show_battery_state();
+	}
+	
+	Tuple *auto_back = dict_find(received, AK_AUTO_BACK);
+	if (auto_back !=NULL) {
+      settings.auto_back = auto_back->value->uint32;
+	  rotate_first_page();
+	}
 
+	
+	Tuple *default_font = dict_find(received, AK_DEFAULT_FONT);
+	if (default_font !=NULL) {
+      settings.default_font = default_font->value->uint8;
+	  set_default_font();	  
+	}
+	
+	Tuple *get_position = dict_find(received, AK_GET_POSITION);
+	if (get_position !=NULL) {
+      settings.get_position = get_position->value->uint8;
+//	  set_default_font();	  
+	}
+	
+	Tuple *type_position = dict_find(received, AK_TYPE_POSITION);
+	if (type_position !=NULL) {
+	  strncpy(settings.type_position,type_position->value->cstring,40);		  
+		if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "type_position %s",settings.type_position);};
+		if (is_inet_connected){
+			weather_request_update(settings.get_position,settings.type_position);
+		}
+		rotate_first_page();
+//	  set_default_font();	  
+	}
+
+	
     // style_day_inv == day_invert
     Tuple *style_day_inv = dict_find(received, AK_STYLE_DAY_INV);
     if (style_day_inv != NULL) {
@@ -1409,10 +1855,10 @@ void in_configuration_handler(DictionaryIterator *received, void *context) {
     Tuple *vibe_hour = dict_find(received, AK_VIBE_HOUR);
     if (vibe_hour != NULL) {
       settings.vibe_hour = vibe_hour->value->uint8;
-      if (settings.vibe_hour && !battery_plugged) {
+      if (settings.vibe_hour && (!battery_plugged || phone_battery_percent>0)) {
         layer_set_hidden(bitmap_layer_get_layer(bmp_charging_layer), false);
         bitmap_layer_set_bitmap(bmp_charging_layer, image_hourvibe_icon);
-      } else if (!battery_charging) {
+      } else if (!battery_charging || phone_battery_percent>0) {
         layer_set_hidden(bitmap_layer_get_layer(bmp_charging_layer), true);
       }
     }
@@ -1469,10 +1915,6 @@ void in_configuration_handler(DictionaryIterator *received, void *context) {
       }
     }
 
-    if (need_second_tick_handler() != seconds_shown) {
-      switch_tick_handler();
-    }
-
     // now that we've received any changes, redraw the subtext (which processes week, day, and AM/PM)
     update_datetime_subtext();
 
@@ -1486,97 +1928,88 @@ void in_configuration_handler(DictionaryIterator *received, void *context) {
       settings.vibe_pat_connect = VIBE_PAT_C->value->uint8;
     }
 
-    // AK_TRACK_BATTERY == whether or not to do battery tracking
-    Tuple *track_battery = dict_find(received, AK_TRACK_BATTERY);
-    if (track_battery != NULL) {
-      settings.track_battery = track_battery->value->uint8;
-      if (settings.track_battery) {
-        battery_status_send(NULL); // either it was just turned on, or we'll get a bonus datapoint from running config.
-      }
-    }
-
     // begin translations...
     Tuple *translation;
 
-    // AK_LANGUAGE == language, e.g. EN
-    Tuple *chosen_language = dict_find(received, AK_LANGUAGE);
-    if (chosen_language != NULL) {
-      if (debug.language) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Language is set to %s", chosen_language->value->cstring); }
-      strncpy(lang_gen.language, chosen_language->value->cstring, sizeof(lang_gen.language)-1);
-      set_unifont();
-    }
-
-    // AK_TRANS_ABBR_*DAY == abbrDaysOfWeek // localized Su Mo Tu We Th Fr Sa, max 2 characters
+    // AK_TRANS_ABBR_*DAY == abbrDaysOfWeek // localized Su Mo Tu We Th Fr Sa
     for (int i = AK_TRANS_ABBR_SUNDAY; i <= AK_TRANS_ABBR_SATURDAY; i++ ) {
       translation = dict_find(received, i);
       if (translation != NULL) {
-        if (debug.language) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "translation for key %d is %s", i, translation->value->cstring); }
-        strncpy(lang_gen.abbrDaysOfWeek[i - AK_TRANS_ABBR_SUNDAY], translation->value->cstring, sizeof(lang_gen.abbrDaysOfWeek[i - AK_TRANS_ABBR_SUNDAY])-1);
+//        if (TRANSLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "translation for key %d is %s", i, translation->value->cstring); }
+		if (TRANSLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "translation for key %d", i); }		
+        strncpy(lang_datetime.abbrDaysOfWeek[i - AK_TRANS_ABBR_SUNDAY], translation->value->cstring, sizeof(lang_datetime.abbrDaysOfWeek[i - AK_TRANS_ABBR_SUNDAY])-1);
       }
     }
 
-    // AK_TRANS_*DAY == daysOfWeek // localized Sunday through Saturday, max 12 characters
+    // AK_TRANS_*DAY == daysOfWeek // localized Sunday through Saturday, max ~11 characters
     for (int i = AK_TRANS_SUNDAY; i <= AK_TRANS_SATURDAY; i++ ) {
       translation = dict_find(received, i);
       if (translation != NULL) {
-        if (debug.language) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "translation for key %d is %s", i, translation->value->cstring); }
-        strncpy(lang_days.DaysOfWeek[i - AK_TRANS_SUNDAY], translation->value->cstring, sizeof(lang_days.DaysOfWeek[i - AK_TRANS_SUNDAY])-1);
+//        if (TRANSLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "translation for key %d is %s", i, translation->value->cstring); }
+        if (TRANSLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "translation for key %d",i); }		
+        strncpy(lang_datetime.DaysOfWeek[i - AK_TRANS_SUNDAY], translation->value->cstring, sizeof(lang_datetime.DaysOfWeek[i - AK_TRANS_SUNDAY])-1);
       }
     }
 
-    // AK_TRANS_ABBR_*MONTH == monthsOfYear // localized month name abbreviations, max 3 characters
-    for (int i = AK_TRANS_ABBR_JANUARY; i <= AK_TRANS_ABBR_DECEMBER; i++ ) {
-      translation = dict_find(received, i);
-      if (translation != NULL) {
-        if (debug.language) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "translation for key %d is %s", i, translation->value->cstring); }
-        strncpy(lang_gen.abbrMonthsNames[i - AK_TRANS_ABBR_JANUARY], translation->value->cstring, sizeof(lang_gen.abbrMonthsNames[i - AK_TRANS_ABBR_JANUARY])-1);
-      }
-    }
-
-    // AK_TRANS_*MONTH == monthsOfYear // localized month names, max 12 characters
+    // AK_TEXT_MONTH == monthsOfYear // localized month names, max ~9 characters ('September' == practical display limit)
     for (int i = AK_TRANS_JANUARY; i <= AK_TRANS_DECEMBER; i++ ) {
       translation = dict_find(received, i);
       if (translation != NULL) {
-        if (debug.language) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "translation for key %d is %s", i, translation->value->cstring); }
-        strncpy(lang_months.monthsNames[i - AK_TRANS_JANUARY], translation->value->cstring, sizeof(lang_months.monthsNames[i - AK_TRANS_JANUARY])-1);
+//        if (TRANSLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "translation for key %d is %s", i, translation->value->cstring); }
+        if (TRANSLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "translation for key %d ", i); }		
+        strncpy(lang_datetime.monthsNames[i - AK_TRANS_JANUARY], translation->value->cstring, sizeof(lang_datetime.monthsNames[i - AK_TRANS_JANUARY])-1);
       }
     }
 
-    // AK_TRANS_CONNECTED / AK_TRANS_DISCONNECTED == status text, e.g. "Linked" "NOLINK", max 9 characters
-    for (int i = AK_TRANS_CONNECTED; i <= AK_TRANS_DISCONNECTED; i++ ) {
+    // AK_TRANS_CONNECTED / AK_TRANS_DISCONNECTED == status text, e.g. "Linked" "NOLINK"
+/*    for (int i = AK_TRANS_CONNECTED; i <= AK_TRANS_DISCONNECTED; i++ ) {
       translation = dict_find(received, i);
       if (translation != NULL) {
-        if (debug.language) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "translation for key %d is %s", i, translation->value->cstring); }
+        if (TRANSLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "translation for key %d is %s", i, translation->value->cstring); }
         strncpy(lang_gen.statuses[i - AK_TRANS_CONNECTED], translation->value->cstring, sizeof(lang_gen.statuses[i - AK_TRANS_CONNECTED])-1);
       }
-    }
+    }*/
+	
+	
     vibe_suppression = true;
     update_connection();
     vibe_suppression = false;
 
-    // AK_TRANS_TIME_AM / AK_TRANS_TIME_PM == AM / PM text, e.g. "AM" "PM" :), max 6 characters
+    // AK_TRANS_TIME_AM / AK_TRANS_TIME_PM == AM / PM text, e.g. "AM" "PM" :)
     for (int i = AK_TRANS_TIME_AM; i <= AK_TRANS_TIME_PM; i++ ) {
       translation = dict_find(received, i);
       if (translation != NULL) {
-        if (debug.language) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "translation for key %d is %s", i, translation->value->cstring); }
+        if (TRANSLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "translation for key %d is %s", i, translation->value->cstring); }
         strncpy(lang_gen.abbrTime[i - AK_TRANS_TIME_AM], translation->value->cstring, sizeof(lang_gen.abbrTime[i - AK_TRANS_TIME_AM])-1);
       }
     }
     
+	Tuple *getposition = dict_find(received, AK_GETPOSITION);
+	if (getposition !=NULL){
+		static char type_getposition[45]="\0";
+        snprintf(type_getposition, sizeof(type_getposition), "%s\n", getposition->value->cstring);	
+		strncpy(lang_gen.getposition, type_getposition, sizeof(type_getposition));
+		if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "lang_gen getposition %s",lang_gen.getposition);};
+	}
     // end translations...
 
     int result = 0;
     result = persist_write_data(PK_SETTINGS, &settings, sizeof(settings) );
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Wrote %d bytes into settings", result); }
+    if (TRANSLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Wrote %d bytes into settings", result); }
     result = persist_write_data(PK_LANG_GEN, &lang_gen, sizeof(lang_gen) );
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Wrote %d bytes into lang_gen", result); }
-    result = persist_write_data(PK_LANG_MONTHS, &lang_months, sizeof(lang_months) );
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Wrote %d bytes into lang_months", result); }
-    result = persist_write_data(PK_LANG_DAYS, &lang_days, sizeof(lang_days) );
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Wrote %d bytes into lang_days", result); }
-    result = persist_write_data(PK_DEBUGGING, &debug, sizeof(debug) );
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Wrote %d bytes into debug", result); }
+    if (TRANSLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Wrote %d bytes into lang_gen", result); }
 
+    result = persist_write_data(PK_LANG_DATETIME, &lang_datetime.abbrDaysOfWeek, sizeof(lang_datetime.abbrDaysOfWeek) );
+    if (TRANSLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Wrote %d bytes into lang_datetime %d", result,sizeof(lang_datetime.abbrDaysOfWeek)); }
+
+    result = persist_write_data(PK_LANG_DATETIME1, &lang_datetime.monthsNames, sizeof(lang_datetime.monthsNames) );
+    if (TRANSLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Wrote %d bytes into lang_datetime1 %d", result,sizeof(lang_datetime.monthsNames)); }
+
+    result = persist_write_data(PK_LANG_DATETIME2, &lang_datetime.DaysOfWeek, sizeof(lang_datetime.DaysOfWeek) );
+    if (TRANSLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Wrote %d bytes into lang_datetime2 %d", result,sizeof(lang_datetime.DaysOfWeek)); }
+	
+	
+	
     // ==== Implemented SDK ====
     // Battery
     // Connected
@@ -1585,36 +2018,165 @@ void in_configuration_handler(DictionaryIterator *received, void *context) {
     // ==== Available in SDK ====
     // Accelerometer
     // App Focus ( does this apply to Timely? )
-    // PebbleKit JS - more accurate location data: enableHighAccuracy (takes a while on IOS)
     // ==== Waiting on / SDK gaps ====
     // Magnetometer
+    // PebbleKit JS - more accurate location data
     // ==== Interesting SDK possibilities ====
     // PebbleKit JS - more information from phone
     // ==== Future improvements ====
     // Positioning - top, bottom, etc.
-  if (1) { layer_mark_dirty(calendar_layer); } // TODO
-  if (1) { layer_mark_dirty(datetime_layer); } // TODO
+  if (1) { layer_mark_dirty(calendar_layer); }
+  if (1) { layer_mark_dirty(datetime_layer); }
+
+  //update_time_text(&currentTime);
 }
 
 void my_in_rcv_handler(DictionaryIterator *received, void *context) {
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function my_in_rcv_handler"); }
 // incoming message received
+//  Tuple *ready_status = dict_find(received, AK_JS_LOADED);
   Tuple *message_type = dict_find(received, AK_MESSAGE_TYPE);
+  // weather
+  Tuple *set_weather = dict_find(received, SET_WEATHER_MSG_KEY);
+//  Tuple *set_preferences = dict_find(received, SET_PREFERENCES_MSG_KEY);
+  // - weather
+	Tuple *set_preference = dict_find(received,SET_PREFERENCES_MSG_KEY); 
+	Tuple *set_phone_bs = dict_find(received, 201);
+	Tuple *set_phone_bs_chg = dict_find(received, 202);	
+	Tuple *get_battery_state = dict_find(received,200);
+	Tuple *status_pebble_battery_on_phone = dict_find(received,203);
+	Tuple *status_pebble_cherging_on_phone = dict_find(received,204);
+	Tuple *incom_sms_cnt = dict_find(received,205);
+	Tuple *incom_calls_cnt = dict_find(received,206);	
+	Tuple *set_phone_bs_plg = dict_find(received,207);
+	Tuple *smartstatus_battery = dict_find(received,64525);
+	Tuple *tis_inet_connected = dict_find(received,208);
+	
+	if (tis_inet_connected != NULL){
+		if(tis_inet_connected->value->uint32 == 1){
+			is_inet_connected = true;
+		}else{
+			is_inet_connected = false;
+		}
+		update_weather_info(weather);
+		app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "is inet conected %d", (int)tis_inet_connected->value->uint32);
+	}
+	
+	if (smartstatus_battery != NULL){
+		phone_battery_percent = smartstatus_battery->value->uint8;
+		show_battery_state();
+	}
+	
+	
+	if (set_phone_bs !=NULL){
+		int phone_bs_value = set_phone_bs->value-> uint32;
+		int phone_bs_chg = set_phone_bs_chg->value->uint32;
+		
+		phone_battery_percent=phone_bs_value;
+		phone_battery_charging=false;
+		if (phone_bs_chg==1){
+			phone_battery_charging=true;
+		}
+		
+		int po_phone_bs_value = status_pebble_battery_on_phone->value-> uint32;
+		int po_phone_bs_chg = status_pebble_cherging_on_phone->value->uint32;
+		
+		pebble_on_phone_battery_percent=po_phone_bs_value;
+		pebble_on_phone_battery_charging=false;
+		if (po_phone_bs_chg==1){
+			pebble_on_phone_battery_charging=true;
+		}
+		if (set_phone_bs_plg != NULL){
+			if( set_phone_bs_plg->value->uint32==1){
+				phone_battery_plugged = true;
+			}else{
+				phone_battery_plugged = false;
+			}
+		}
+		if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Message type Phone Battery %d %d", phone_bs_value, phone_bs_chg);}
+		battery_status_send(NULL);
+		show_battery_state();
+	}
+	
+	if(incom_sms_cnt != NULL){
+		sms_incom_count = incom_sms_cnt->value-> uint32;
+		incom_sms_show();
+	}
+	
+	if(incom_calls_cnt != NULL){
+		calls_incom_count = incom_calls_cnt->value-> uint32;
+		incom_calls_show();
+	}
+	
+	
+	if(get_battery_state !=NULL){
+		battery_status_send(NULL);
+	}
+	
+	if (set_preference !=NULL){
+		in_configuration_handler(received, context);
+	}
   if (message_type != NULL) {
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Message type %d received", message_type->value->uint8); }
+    if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Message type %d received", message_type->value->uint8); }
+//	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "my_in_recv_hand message_type->value->uint8 %d",message_type->value->uint8);
     switch ( message_type->value->uint8 ) {
     case AK_TIMEZONE_OFFSET:
       in_timezone_handler(received, context);
       return;
+//	case SET_PREFERENCES_MSG_KEY:
+//		in_configuration_handler(received, context);
+//	   return;
     }
   } else {
     // default to configuration, which may not send the message type...
-    in_configuration_handler(received, context);
+//    in_configuration_handler(received, context);
+//	weather_request_update();
   }
+  // weather
+  	if(set_weather) {
+		if(set_weather->value->uint8==1){
+//			text_layer_set_text(weather_temperature_layer, "РВИ");
+			if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "my_in_recv_hand bf weather_set %s",weather->name);};
+			weather_now_loading=false;
+			weather_set(weather, received);
+//			app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "my_in_recv_hand weather_set %s",weather->name);
+			update_weather_info(weather);
+//			app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "my_in_recv_hand upd_weather_info %s",weather->name);
+		};
+		if(set_weather->value->uint8==2){
+			text_layer_set_text(weather_name_layer,"Not Find Location");
+		}
+		if(set_weather->value->uint8==0){
+			text_layer_set_text(weather_name_layer,"No Connect");
+		}
+		if(set_weather->value->uint8==3){
+			text_layer_set_text(weather_name_layer,"GPS error");
+		}
+		if(set_weather->value->uint8==3){
+			text_layer_set_text(weather_name_layer,"I-net Eerror");
+		}		
+	
+	}
+/*  if (ready_status){
+	if (ready_status->value->int32 == 1){
+		app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "receive status 'ready'");
+		weather_request_update();
+	}
+  }	*/
+/*	if(set_preferences) {
+		Preferences old_prefs = *prefs;
+		
+		preferences_set(prefs, received);
+		change_preferences(&old_prefs, prefs);
+		
+		preferences_save(prefs);
+	}*/
+	// -weather
 }
 
 void my_in_drp_handler(AppMessageResult reason, void *context) {
 // incoming message dropped
-  if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "AppMessage Dropped: %d", reason); }
+  /*if (DEBUGLOG)*/ { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "AppMessage Dropped: %d", reason); }
 }
 
 static void app_message_init(void) {
@@ -1625,104 +2187,108 @@ static void app_message_init(void) {
   app_message_register_outbox_failed(my_out_fail_handler);
   // Init buffers
   app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
+  
+//	prefs = preferences_load();
+//	if(weather_in_cache()){
+//		weather = weather_load_cache();
+//	}
+
+//	preferences_send(prefs);  
 }
 
-static void upgrade_pk_v10_v11() {
-  int result = 0;
-  if (persist_exists(PK_LANG_DATETIME)) {
-    typedef struct DEFUNCT_persist_datetime_lang { // 247 bytes   // deprecated v10->v11 (utf8)
-      char monthsNames[12][13];       // 156: 12 characters for each of 12 months
-      char DaysOfWeek[7][13];         //  91: 12 characters for each of  7 weekdays
-    } __attribute__((__packed__)) DEFUNCT_persist_datetime_lang;
-    DEFUNCT_persist_datetime_lang lang_datetime = {   // deprecated v10->v11 (utf8)
-      .monthsNames = { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" },
-      .DaysOfWeek = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" },
-    };
-    persist_read_data(PK_LANG_DATETIME, &lang_datetime, sizeof(lang_datetime) );
-    // split char arrays out into individual new UTF8-sized PKs
-    for (int i = AK_TRANS_JANUARY; i <= AK_TRANS_DECEMBER; i++ ) {
-      strncpy(lang_months.monthsNames[i - AK_TRANS_JANUARY], lang_datetime.monthsNames[i - AK_TRANS_JANUARY], sizeof(lang_datetime.monthsNames[i - AK_TRANS_JANUARY])-1);
-    }
-    result = persist_write_data(PK_LANG_MONTHS, &lang_months, sizeof(lang_months) );
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Upgraded structures, v10->v11, wrote %d bytes into lang_months", result); }
-    for (int i = AK_TRANS_SUNDAY; i <= AK_TRANS_SATURDAY; i++ ) {
-        strncpy(lang_days.DaysOfWeek[i - AK_TRANS_SUNDAY], lang_datetime.DaysOfWeek[i - AK_TRANS_SUNDAY], sizeof(lang_datetime.DaysOfWeek[i - AK_TRANS_SUNDAY])-1);
-    }
-    result = persist_write_data(PK_LANG_DAYS, &lang_days, sizeof(lang_days) );
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Upgraded structures, v10->v11, wrote %d bytes into lang_days", result); }
-    result = persist_delete(PK_LANG_DATETIME);
-    if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Upgraded structures, v10->v11, %d - deleted PK for lang_datetime", result); }
-  }
-
-  typedef struct DEFUNCT_persist_general_lang { // 101 bytes   // deprecated v10->v11 (utf8)
-    char statuses[2][10];           //  20:  9 characters for each of  2 statuses
-    char abbrTime[2][6];            //  24:  5 characters for each of  2 abbreviations
-    char abbrDaysOfWeek[7][3];      //  21:  2 characters for each of  7 weekdays abbreviations
-    char abbrMonthsNames[12][4];    //  48:  3 characters for each of 12 months abbreviations
-  //                                   101 bytes
-  } __attribute__((__packed__)) DEFUNCT_persist_general_lang;
-  DEFUNCT_persist_general_lang old_lang_gen = {   // deprecated v10->v11 (utf8)
-    .statuses = { "Linked", "NOLINK" },
-    .abbrTime = { "AM", "PM" },
-    .abbrDaysOfWeek = { "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" },
-    .abbrMonthsNames = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" },
-  };
-  persist_read_data(PK_LANG_GEN, &old_lang_gen, sizeof(old_lang_gen) );
-
-  for (int i = AK_TRANS_CONNECTED; i <= AK_TRANS_DISCONNECTED; i++ ) {
-    strncpy(lang_gen.statuses[i - AK_TRANS_CONNECTED], old_lang_gen.statuses[i - AK_TRANS_CONNECTED], sizeof(old_lang_gen.statuses[i - AK_TRANS_CONNECTED])-1);
-  }
-  for (int i = AK_TRANS_TIME_AM; i <= AK_TRANS_TIME_PM; i++ ) {
-    strncpy(lang_gen.abbrTime[i - AK_TRANS_TIME_AM], old_lang_gen.abbrTime[i - AK_TRANS_TIME_AM], sizeof(old_lang_gen.abbrTime[i - AK_TRANS_TIME_AM])-1);
-  }
-  for (int i = AK_TRANS_ABBR_SUNDAY; i <= AK_TRANS_ABBR_SATURDAY; i++ ) {
-    strncpy(lang_gen.abbrDaysOfWeek[i - AK_TRANS_ABBR_SUNDAY], old_lang_gen.abbrDaysOfWeek[i - AK_TRANS_ABBR_SUNDAY], sizeof(old_lang_gen.abbrDaysOfWeek[i - AK_TRANS_ABBR_SUNDAY])-1);
-  }
-  for (int i = AK_TRANS_ABBR_JANUARY; i <= AK_TRANS_ABBR_DECEMBER; i++ ) {
-    strncpy(lang_gen.abbrMonthsNames[i - AK_TRANS_ABBR_JANUARY], old_lang_gen.abbrMonthsNames[i - AK_TRANS_ABBR_JANUARY], sizeof(old_lang_gen.abbrMonthsNames[i - AK_TRANS_ABBR_JANUARY])-1);
-  }
-  result = persist_write_data(PK_LANG_GEN, &lang_gen, sizeof(lang_gen) );
-  if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Upgraded structures, v10->v11, wrote %d bytes into lang_gen", result); }
-
-  // blindly assume success and update our version - if it failed, then defaults will be loaded anyway...
-  settings.version = 11;
-  result = persist_write_data(PK_SETTINGS, &settings, sizeof(settings) );
-  if (debug.general) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Upgraded structures, v10->v11, wrote %d bytes into settings", result); }
+static void rotate_page_by_timer(void *data){
+	rotate_first_page();
 }
+static void set_current_page() { 
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "set current page %d",current_page);
+	if (current_page==settings.first_page){ auto_back_fp = NULL;}
+	switch(current_page){
+		case 0:{
+			layer_set_hidden(calendar_layer, false);
+			layer_set_hidden(weather_layer, true);	
+			return;
+		}
+		case 1:{
+			layer_set_hidden(weather_layer, false);
+			layer_set_hidden(calendar_layer, true);
+			return;
+		}
+	}	
+}
+
+void rotate_first_page(){
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function rotate_first_page"); }
+	if(settings.get_position==0 && strlen(settings.type_position)==0){
+		settings.first_page=0;
+	}
+	current_page=settings.first_page;
+	set_current_page(NULL);
+}
+
+
+void accel_int(AccelAxisType axis, int32_t direction){
+//	if (DEBUGLOG) { app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Function accel_int"); }
+	if (is_accel_stoped == false){
+		app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "start_timer is_accel_stop=false AccelAxisType = %d direction =%d",axis,(int)direction);
+		if(current_page==0){ current_page=1;}else{current_page=0;}
+		if(settings.get_position==0 && strlen(settings.type_position)==0){
+			current_page=0;
+		}
+		set_current_page(NULL);
+		if (current_page!=settings.first_page && settings.auto_back!=0){
+			auto_back_fp = app_timer_register(settings.auto_back*1000, &rotate_page_by_timer, NULL);
+			app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "start_timer %d",(int)(settings.auto_back*1000));
+		}
+		if (current_page == settings.first_page){
+			auto_back_fp = NULL;
+		}
+	} else {
+//		app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "start_timer is_accel_stop=true");
+		;
+	}
+}
+
+//static void back_button_handler(ClickRecognizerRef recognizer, void *context) {
+//	if( settings.first_page==0){ settings.first_page=1;} else {settings.first_page=0;}
+//	rotate_first_page();
+//}
+
+//static void click_config_provider(void *context) {
+//  window_single_click_subscribe(BUTTON_ID_BACK, back_button_handler);
+//  app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "click config provider");
+//}
 
 static void init(void) {
 
-  if (DEBUGLOG == 1) { debug.general = true; }
-  if (TRANSLOG == 1) { debug.language = true; }
-  currentTime = get_time();
-
   app_message_init();
-
-  watch_version_send(NULL); // no guarantee the JS is there to receive me...
-
+//	if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "init");};
   if (persist_exists(PK_SETTINGS)) {
+	if (TRANSLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "read settings");};
     persist_read_data(PK_SETTINGS, &settings, sizeof(settings) );
-    if (settings.version == 10) { upgrade_pk_v10_v11(); } // v10 -> v11 upgrades
-    if (persist_exists(PK_LANG_GEN)) {
-      persist_read_data(PK_LANG_GEN, &lang_gen, sizeof(lang_gen) );
-    }
-    if (persist_exists(PK_LANG_MONTHS)) {
-      persist_read_data(PK_LANG_MONTHS, &lang_months, sizeof(lang_months) );
-    }
-    if (persist_exists(PK_LANG_DAYS)) {
-      persist_read_data(PK_LANG_DAYS, &lang_days, sizeof(lang_days) );
-    }
-    if (persist_exists(PK_DEBUGGING)) {
-      persist_read_data(PK_DEBUGGING, &debug, sizeof(debug) );
-    }
   }
-  // re-initialize this, if it was set, since we're storing those values persistently as well...
-  if (DEBUGLOG == 1) { debug.general= true; }
-  if (TRANSLOG == 1) { debug.language = true; }
-
-  request_timezone(NULL);
+  if (persist_exists(PK_LANG_GEN)) {
+	if (TRANSLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "read lang");};
+    persist_read_data(PK_LANG_GEN, &lang_gen, sizeof(lang_gen) );
+  }
+  if (persist_exists(PK_LANG_DATETIME)) {
+	if (TRANSLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "read datta %d",sizeof(lang_datetime.abbrDaysOfWeek));};
+    persist_read_data(PK_LANG_DATETIME, &lang_datetime.abbrDaysOfWeek, sizeof(lang_datetime.abbrDaysOfWeek) );
+  }
+  
+  if (persist_exists(PK_LANG_DATETIME1)) {
+	if (TRANSLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "read datta %d",sizeof(lang_datetime.monthsNames));};
+    persist_read_data(PK_LANG_DATETIME1, &lang_datetime.monthsNames, sizeof(lang_datetime.monthsNames) );
+  }
+  
+  if (persist_exists(PK_LANG_DATETIME2)) {
+	if (TRANSLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "read datta %d",sizeof(lang_datetime.DaysOfWeek));};
+    persist_read_data(PK_LANG_DATETIME2, &lang_datetime.DaysOfWeek, sizeof(lang_datetime.DaysOfWeek) );
+  }
+  
+  request_timezone();
 
   window = window_create();
+//  window_set_click_config_provider(window,(ClickConfigProvider) click_config_provider);
   window_set_window_handlers(window, (WindowHandlers) {
     .load = window_load,
     .unload = window_unload
@@ -1733,12 +2299,28 @@ static void init(void) {
 
   //update_time_text();
 
-  switch_tick_handler();
+  tick_timer_service_subscribe(MINUTE_UNIT, &handle_minute_tick);
   battery_state_service_subscribe(&handle_battery);
   handle_battery(battery_state_service_peek()); // initialize
   bluetooth_connection_service_subscribe(&handle_bluetooth);
   handle_bluetooth(bluetooth_connection_service_peek()); // initialize
+  
+  accel_tap_service_subscribe(accel_int);
+  
+  
   vibe_suppression = false;
+  
+//	if(weather_in_cache()){
+	weather = weather_load_cache();  
+	update_weather_info(weather);
+	
+	set_default_font();
+	get_phone_battery_state = true;
+	set_pos_data_over_time();
+//	sendBatteryState();
+//	weather->last_update_time = 0;
+//	}
+//  weather_request_update();
 }
 
 int main(void) {
@@ -1746,3 +2328,5 @@ int main(void) {
   app_event_loop();
   deinit();
 }
+
+//{"message":"accurate","cod":"200","count":1,"list":[{"id":692194,"name":"Sumy","coord":{"lon":34.800289,"lat":50.9216},"main":{"temp":256.562,"temp_min":256.562,"temp_max":256.562,"pressure":1024.13,"sea_level":1046.02,"grnd_level":1024.13,"humidity":78},"dt":1390980780,"wind":{"speed":9.61,"deg":91.0002},"sys":{"country":"UA"},"clouds":{"all":24},"weather":[{"id":801,"main":"Clouds","description":"few clouds","icon":"02d"}]}]}

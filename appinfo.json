@@ -1,39 +1,51 @@
 {
-  "uuid": "55f7744b-f586-45b8-854c-554f34489f20",
-  "shortName": "Timely",
-  "longName": "Timely 2.2",
-  "companyName": "Martin Norland (@cynorg)",
+  "uuid": "17E9E8A6-C57D-46C5-A8DA-2C7211DE0B73",
+  "shortName": "TCW",
+  "longName": "Time, Calendar, Weather 2.0",
+  "companyName": "Martin Norland & alexsum",
   "versionCode": 2,
-  "versionLabel": "2.2.0",
+  "versionLabel": "2.0.12",
   "watchapp": {
     "watchface": true
   },
+ 
   "capabilities": [ "configurable" ],
   "appKeys": {
-    "style_inv":     0,
-    "style_day_inv": 1,
-    "style_grid":    2,
-    "vibe_hour":     3,
-    "intl_dowo":     4,
-    "intl_fmt_date": 5,
-    "style_am_pm":   6,
-    "style_day":     7,
-    "style_week":    8,
-    "intl_fmt_week": 9,
-    "debugging_on":         10,
-    "vibe_pat_disconnect":  11,
-    "vibe_pat_connect":     12,
-    "strftime_format":      13,
-    "track_battery":        14,
-    "language":             15,
-    "debuglang_on":         16,
+        "getPosition":   18,
+		"typePosition":   19,
+		"requestWeather": 21,
+		"setWeather": 22,
+		"temperature": 23,
+		"conditions": 24,
+		"setPrefs": 25,
+		"tempFormat": 26,
+		"weatherUpdateFreq": 27,
+		"statusbar": 28,  
+		"weathername" :29,
+		"country": 20,
+	"send_phone_battery_request": 200,
+    "send_battery_value": 211,
+	"send_battery_charging": 212,
+	
+	
+    "style_inv":     30,
+    "style_day_inv": 31,
+    "style_grid":    32,
+    "vibe_hour":     33,
+    "intl_dowo":     34,
+    "intl_fmt_date": 35,
+    "style_am_pm":   36,
+    "style_day":     37,
+    "style_week":    38,
+    "intl_fmt_week": 39,
+    "TODO___version":       40,
+    "vibe_pat_disconnect":  41,
+    "vibe_pat_connect":     42,
     "message_type":         99,
     "send_batt_percent":   100,
     "send_batt_charging":  101,
     "send_batt_plugged":   102,
     "timezone_offset":     103,
-    "send_watch_version":  104,
-    "send_config_version": 105,
     "trans_abbr_sunday":   500,
     "trans_abbr_monday":   501,
     "trans_abbr_tuesday":  502,
@@ -65,21 +77,51 @@
     "trans_disconnected":   528,
     "trans_time_am":    529,
     "trans_time_pm":    530,
-    "trans_abbr_january":   531,
-    "trans_abbr_february":  532,
-    "trans_abbr_march":     533,
-    "trans_abbr_april":     534,
-    "trans_abbr_may":       535,
-    "trans_abbr_june":      536,
-    "trans_abbr_july":      537,
-    "trans_abbr_august":    538,
-    "trans_abbr_september": 539,
-    "trans_abbr_october":   540,
-    "trans_abbr_november":  541,
-    "trans_abbr_december":  542
+	"degree_style":     531,
+	"first_page":       532,
+	"weather_upd":      533,
+	"battery_show":      534,
+	"phone_battery_show":      539,	
+	"auto_back":         540,
+	"default_font":      535,
+	"get_position":      536,
+	"type_position":     537,
+	"trans_getposition": 538,
+	"data_over_time":	 541,
+	"trans_week":		542
   },
   "resources": {
     "media": [
+      {
+        "characterRegex": "[:0-9]",
+        "type": "font",
+        "name": "FONT_DIGITAL_SEVEN_48",
+        "file": "fonts/DS-DIGIB.TTF"
+      },	
+      {
+        "characterRegex": "[:0-9]",
+        "type": "font",
+        "name": "FONT_DIGITAL_SEVEN_60",
+        "file": "fonts/DS-DIGIB.TTF"
+      },	  
+      {
+	    "characterRegex": "[ ,.:0-9А-Яа-яІіЇїA-Za-z]",
+        "type": "font",
+        "name": "FONT_DIGITAL_SEVEN_20",
+        "file": "fonts/digital-7.TTF"
+      },	  
+			{
+				"characterRegex": "[+-.,0-9°]",
+				"name": "FONT_FUTURA_40",
+				"type": "font",
+				"file": "fonts/digital-7.ttf"
+			},  
+			{
+				"characterRegex": "[+-.,0-9°]",
+				"name": "FONT_FUTURA_30",
+				"type": "font",
+				"file": "fonts/roboto.ttf"
+			}, 			
       {
         "menuIcon": true,
         "type": "png",
@@ -89,7 +131,7 @@
       {
         "type": "png",
         "name": "IMAGE_BT_NOLINK_ICON",
-        "file": "images/bluetooth_20_20.png"
+        "file": "images/bluetoothno.png"
       },
       {
         "type": "png",
@@ -106,30 +148,143 @@
         "name": "IMAGE_HOURVIBE_ICON",
         "file": "images/hourvibe_20_20.png"
       },
-      {
-        "type": "font",
-        "characterRegex": "[\u0020-\u007e\u0400-\u0451\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u00ff\u2026]",
-        "name": "FONT_UNICODE_FB_14",
-        "file": "fonts/unifont_latest.ttf"
-      },
-      {
-        "type": "font",
-        "characterRegex": "[\u0020-\u007e\u0400-\u0451\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u00ff\u2026]",
-        "name": "FONT_UNICODE_FB_BOLD_16",
-        "file": "fonts/unifont_latest.ttf"
-      },
-      {
-        "type": "font",
-        "characterRegex": "[\u0020-\u007e\u0400-\u0451\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u00ff\u2026]",
-        "name": "FONT_UNICODE_FB_16",
-        "file": "fonts/unifont_latest.ttf"
-      },
-      {
-        "type": "font",
-        "characterRegex": "[\u0020-\u007e\u0400-\u0451\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u00ff\u2026]",
-        "name": "FONT_UNICODE_FB_18",
-        "file": "fonts/unifont_latest.ttf"
-      }
+	  
+	  
+			{
+				"name": "ICON_LOADING1",
+				"type": "png",
+				"file": "images/loading1.png"
+			},
+			{
+				"name": "ICON_LOADING2",
+				"type": "png",
+				"file": "images/loading2.png"
+			},
+			{
+				"name": "ICON_LOADING3",
+				"type": "png",
+				"file": "images/loading3.png"
+			},
+			{
+				"name": "ICON_CLOUD_ERROR",
+				"type": "png",
+				"file": "images/cloud-error.png"
+			},	  
+			{
+				"name": "WEATHER_CLEAR_DAY",
+				"type": "png",
+				"file": "images/weather/clear-day.png"
+			},
+			{
+				"name": "WEATHER_CLEAR_NIGHT",
+				"type": "png",
+				"file": "images/weather/clear-night.png"
+			},
+			{
+				"name": "WEATHER_PARTLY_CLOUDY_DAY",
+				"type": "png",
+				"file": "images/weather/partly-cloudy-day.png"
+			},
+			{
+				"name": "WEATHER_PARTLY_CLOUDY_NIGHT",
+				"type": "png",
+				"file": "images/weather/partly-cloudy-night.png"
+			},
+			{
+				"name": "WEATHER_CLOUDY",
+				"type": "png",
+				"file": "images/weather/cloudy.png"
+			},
+			{
+				"name": "WEATHER_WIND",
+				"type": "png",
+				"file": "images/weather/wind.png"
+			},
+			{
+				"name": "WEATHER_FOG",
+				"type": "png",
+				"file": "images/weather/fog.png"
+			},
+			{
+				"name": "WEATHER_DRIZZLE",
+				"type": "png",
+				"file": "images/weather/drizzle.png"
+			},
+			{
+				"name": "WEATHER_RAIN",
+				"type": "png",
+				"file": "images/weather/rain.png"
+			},
+			{
+				"name": "WEATHER_SNOW",
+				"type": "png",
+				"file": "images/weather/snow.png"
+			},
+			{
+				"name": "WEATHER_RAIN_SNOW",
+				"type": "png",
+				"file": "images/weather/rain-snow.png"
+			},
+			{
+				"name": "WEATHER_SLEET",
+				"type": "png",
+				"file": "images/weather/sleet.png"
+			},
+			{
+				"name": "WEATHER_RAIN_SLEET",
+				"type": "png",
+				"file": "images/weather/rain-sleet.png"
+			},
+			{
+				"name": "WEATHER_SNOW_SLEET",
+				"type": "png",
+				"file": "images/weather/snow-sleet.png"
+			},
+			{
+				"name": "WEATHER_THUNDER",
+				"type": "png",
+				"file": "images/weather/thunder.png"
+			},
+			{
+				"name": "WEATHER_HOT",
+				"type": "png",
+				"file": "images/weather/hot.png"
+			},
+			{
+				"name": "WEATHER_COLD",
+				"type": "png",
+				"file": "images/weather/cold.png"
+			},
+			{
+				"name": "BAT_PHONE",
+				"type": "png",
+				"file": "images/batphone.png"
+			},
+			{
+				"name": "BAT_PEBBLE",
+				"type": "png",
+				"file": "images/batpebble.png"
+			},
+			{
+				"name": "CHARGING",
+				"type": "png",
+				"file": "images/charging.png"
+			},
+			{
+				"name": "PLUGED",
+				"type": "png",
+				"file": "images/pluged.png"
+			},
+			{
+				"name": "SMS_INCOM",
+				"type": "png",
+				"file": "images/sms.png"
+			},
+			{
+				"name": "CALLS_INCOM",
+				"type": "png",
+				"file": "images/calls.png"
+			}
     ]
   }
 }
