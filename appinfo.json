@@ -4,7 +4,7 @@
   "longName": "Time, Calendar, Weather 2.0",
   "companyName": "Martin Norland & alexsum",
   "versionCode": 2,
-  "versionLabel": "2.0.12",
+  "versionLabel": "2.0.13",
   "watchapp": {
 	"watchface": true
   },
