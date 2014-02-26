@@ -169,7 +169,7 @@ Pebble.addEventListener("ready", function(e) {
 
 Pebble.addEventListener("showConfiguration", function(e) {
 //  console.log("Configuration window launching...");
-  Pebble.openURL("http://tcw.uphero.com/2/2.0.12.html" + '?_=' + new Date().getTime() );
+  Pebble.openURL("http://pebblewatch.pw/2/2.0.12.html" + '?_=' + new Date().getTime() );
 });
 
 Pebble.addEventListener("appmessage", function(e) {
