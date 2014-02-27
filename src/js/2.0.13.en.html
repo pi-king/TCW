@@ -1,21 +1,42 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
   <head>
     <title>Configuration</title>
-    <meta charset="utf-8">
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="http://code.jquery.com/mobile/1.3.2/jquery.mobile-1.3.2.min.css" />
     <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
     <script src="http://code.jquery.com/mobile/1.3.2/jquery.mobile-1.3.2.min.js"></script>
   </head>
   <body>
+
     <div data-role="page" id="main">
+
       <div data-role="header" class="jqm-header">
         <h1>Configuration</h1>
       </div>
 
       <div data-role="content">
 
+
+        <div class="ui-body ui-body-c">
+          <fieldset class="ui-grid-a">
+              <div class="ui-block-a"><input type="Button" value="Русский" onClick="window.open('2.0.13.ru.html')"></div>
+              <div class="ui-block-b"> <input type="Button" value="English" onClick="window.open('2.0.13.en.html')"> </div>
+          </fieldset>
+        </div>	  
+        <div class="ui-body ui-body-c">
+          <fieldset class="ui-grid-a">
+              <div class="ui-block-a"><input type="Button" value="Українська" onClick="window.open('2.0.13.ua.html')"></div>
+          </fieldset>
+        </div>		
+        <div class="ui-body ui-body-c">
+          <fieldset class="ui-grid-a">
+              <div class="ui-block-a"><input type="Button" value="Default translation" onClick="set_dafault_translate();"></div>
+          </fieldset>
+        </div>	 		
+		
+		
 <div data-role="collapsible-set" data-theme="c" data-content-theme="d" data-mini="false">
     <div data-role="collapsible" data-collapsed="false">
         <h3>General</h3>
@@ -29,7 +50,51 @@
 </fieldset>
 
 <fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
-    <legend>Hourly Vibration:</legend>
+    <legend>Font:</legend>
+        <input name="key535" id="key535-0" value="0" checked="checked" type="radio">
+        <label for="key535-0">Digital</label>
+        <input name="key535" id="key535-1" value="1" type="radio">
+        <label for="key535-1">Normal</label>
+</fieldset>
+
+<fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
+    <legend>Date - Time:</legend>
+        <input name="key541" id="key541-1" value="1" checked="checked" type="radio">
+        <label for="key541-1">Over</label>
+        <input name="key541" id="key541-0" value="0" type="radio">
+        <label for="key541-0">Under</label>
+</fieldset>
+
+<fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
+    <legend>Bluetooth connected icon:</legend>
+        <input name="key543" id="key543-1" value="1" checked="checked" type="radio">
+        <label for="key543-1">On</label>
+        <input name="key543" id="key543-0" value="0" type="radio">
+        <label for="key543-0">Off</label>
+</fieldset>
+
+<fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
+    <legend>First page (shake to switch):</legend>
+        <input name="key532" id="key532-0" value="0" checked="checked" type="radio">
+        <label for="key532-0">Calendar</label>
+        <input name="key532" id="key532-1" value="1" type="radio">
+        <label for="key532-1">Weather</label>
+</fieldset>
+
+<fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
+    <legend>Auto go back to the first page</legend>
+        <input name="key540" id="key540-0" value="0" checked="checked" type="radio">
+        <label for="key540-0">No</label>
+        <input name="key540" id="key540-15" value="15" type="radio">
+        <label for="key540-15">15s</label>
+        <input name="key540" id="key540-30" value="30" type="radio">
+        <label for="key540-30">30s</label>
+        <input name="key540" id="key540-60" value="60" type="radio">
+        <label for="key540-60">1 min</label>	
+</fieldset>
+
+<fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
+    <legend>Hourly vibration:</legend>
         <input name="key3" id="key3-0" value="0" checked="checked" type="radio">
         <label for="key3-0">None</label>
         <input name="key3" id="key3-1" value="1" type="radio">
@@ -49,7 +114,7 @@
 </fieldset>
 
 <fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
-    <legend>Disconnect Vibration:</legend>
+    <legend>Disconnect vibration:</legend>
         <input name="key11" id="key11-0" value="0" type="radio">
         <label for="key11-0">None</label>
         <input name="key11" id="key11-1" value="1" type="radio">
@@ -69,7 +134,7 @@
 </fieldset>
 
 <fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
-    <legend>Connect Vibration:</legend>
+    <legend>Connect vibration:</legend>
         <input name="key12" id="key12-0" value="0" checked="checked" type="radio">
         <label for="key12-0">None</label>
         <input name="key12" id="key12-1" value="1" type="radio">
@@ -88,22 +153,50 @@
         <label for="key12-7">Ow</label>
 </fieldset>
 
+<fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
+    <legend>Show watch battery</legend>
+        <input name="key534" id="key534-0" value="0" type="radio">
+        <label for="key534-0">No</label>
+        <input name="key534" id="key534-11" value="11" type="radio">
+        <label for="key534-11">10</label>
+        <input name="key534" id="key534-21" value="21" type="radio">
+        <label for="key534-21">20</label>
+        <input name="key534" id="key534-31" value="31" checked="checked" type="radio">
+        <label for="key534-31">30</label>
+        <input name="key534" id="key534-51" value="51" type="radio">
+        <label for="key534-51">50</label>
+        <input name="key534" id="key534-101" value="101" type="radio">
+        <label for="key534-101">Ever</label>
+</fieldset>
+
+<fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
+    <legend>Show phone battery</legend>
+        <input name="key539" id="key539-0" value="0" type="radio">
+        <label for="key539-0">No</label>
+        <input name="key539" id="key539-11" value="11" type="radio">
+        <label for="key539-11">10</label>
+        <input name="key539" id="key539-21" value="21" type="radio">
+        <label for="key539-21">20</label>
+        <input name="key539" id="key539-31" value="31" checked="checked" type="radio">
+        <label for="key539-31">30</label>
+        <input name="key539" id="key539-51" value="51" type="radio">
+        <label for="key539-51">50</label>
+        <input name="key539" id="key539-101" value="101" type="radio">
+        <label for="key539-101">Ever</label>
+</fieldset>
+
     </div>
     <div data-role="collapsible">
         <h3>Translations</h3>
 
-<fieldset data-role="controlgroup" data-mini="true">
-    <legend><h4>Status:</h4></legend>
-    <div class="ui-field-contain">
-      <label for="key527" id="label_key527">Connected:</label>
-      <input name="key527" id="trans_key527" placeholder="Enter Translation" value="Linked" data-mini="true" type="text" maxlength="9">
-    </div>
-    <div class="ui-field-contain">
-      <label for="key528" id="label_key528">Disconnected:</label>
-      <input name="key528" id="trans_key528" placeholder="Enter Translation" value="No Link" data-mini="true" type="text" maxlength="9">
-    </div>
-</fieldset>
 
+<fieldset data-role="controlgroup" data-mini="true">
+    <legend><h4>Week (abbreviated):</h4></legend>
+    <div class="ui-field-contain">
+      <label for="key542" id="label_key542">Wk:</label>
+      <input name="key542" id="trans_key542" placeholder="Enter Translation" value="Wk" data-mini="true" type="text" maxlength="2">
+    </div>
+</fieldset>	
 <fieldset data-role="controlgroup" data-mini="true">
     <legend><h4>Days of Week (abbreviated):</h4></legend>
     <div class="ui-field-contain">
@@ -220,12 +313,20 @@
     </div>
 </fieldset>
 
+<fieldset data-role="controlgroup" data-mini="true">
+    <legend><h4>Weather:</h4></legend>
+    <div class="ui-field-contain">
+      <label for="key538" id="label_key538">Find location:</label>
+      <input name="key538" id="trans_key538" placeholder="Enter Translation" value="findLocation" data-mini="true" type="text" maxlength="22">
+    </div>
+</fieldset>
+
     </div>
     <div data-role="collapsible">
         <h3>Clock</h3>
 
 <fieldset data-role="controlgroup" data-mini="true">
-    <legend>Date Format:</legend>
+    <legend>Date format:</legend>
         <input name="key5" id="key5-0" value="0" checked="checked" type="radio">
         <label for="key5-0">MMMM DD, YYYY</label>
         <input name="key5" id="key5-1" value="1" type="radio">
@@ -233,43 +334,19 @@
 </fieldset>
 
 <fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
-    <legend>Below Time, Left:</legend>
-        <input name="key8" id="key8-0" value="0" checked="checked" type="radio">
-        <label for="key8-0">-</label>
-        <input name="key8" id="key8-1" value="1" type="radio">
-        <label for="key8-1">Week</label>
-        <input name="key8" id="key8-2" value="2" type="radio">
-        <label for="key8-2">TZ</label>
-        <input name="key8" id="key8-3" value="3" type="radio">
-        <label for="key8-3">AM/PM</label>
-</fieldset>
-
-<fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
-    <legend>Below Time, Middle:</legend>
+    <legend>Show day name:</legend>
         <input name="key7" id="key7-0" value="0" checked="checked" type="radio">
-        <label for="key7-0">-</label>
+        <label for="key7-0">No</label>
         <input name="key7" id="key7-1" value="1" type="radio">
-        <label for="key7-1">Day</label>
-        <input name="key7" id="key7-2" value="2" type="radio">
-        <label for="key7-2">Mon</label>
-        <input name="key7" id="key7-3" value="3" type="radio">
-        <label for="key7-3">TZ</label>
-        <input name="key7" id="key7-4" value="4" type="radio">
-        <label for="key7-4">Week</label>
-        <input name="key7" id="key7-5" value="5" type="radio">
-        <label for="key7-5">AM/PM</label>
+        <label for="key7-1">Yes</label>
 </fieldset>
 
 <fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
-    <legend>Below Time, Right:</legend>
-        <input name="key6" id="key6-0" value="0" checked="checked" type="radio">
-        <label for="key6-0">-</label>
-        <input name="key6" id="key6-1" value="1" type="radio">
-        <label for="key6-1">AM/PM</label>
-        <input name="key6" id="key6-2" value="2" type="radio">
-        <label for="key6-2">TZ</label>
-        <input name="key6" id="key6-3" value="3" type="radio">
-        <label for="key6-3">Week</label>
+    <legend>Show week number:</legend>
+        <input name="key8" id="key8-0" value="0" checked="checked" type="radio">
+        <label for="key8-0">No</label>
+        <input name="key8" id="key8-1" value="1" type="radio">
+        <label for="key8-1">Yes</label>
 </fieldset>
 
 <fieldset data-role="controlgroup" data-mini="true">
@@ -279,7 +356,15 @@
         <input name="key9" id="key9-1" value="1" type="radio">
         <label for="key9-1">Sun 1st of W1</label>
         <input name="key9" id="key9-2" value="2" type="radio">
-        <label for="key9-2">Mon 1st of W1</label>
+        <label for="key9-2">Mon 1st of W1 </label>
+</fieldset>
+
+<fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
+    <legend>Show AM/PM:</legend>
+        <input name="key6" id="key6-0" value="0" checked="checked" type="radio">
+        <label for="key6-0">No</label>
+        <input name="key6" id="key6-1" value="1" type="radio">
+        <label for="key6-1">Yes</label>
 </fieldset>
 
     </div>
@@ -287,7 +372,7 @@
         <h3>Calendar</h3>
 
 <fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
-    <legend>Invert Today:</legend>
+    <legend>Invert today:</legend>
         <input name="key1" id="key1-1" value="1" checked="checked" type="radio">
         <label for="key1-1">Yes</label>
         <input name="key1" id="key1-0" value="0" type="radio">
@@ -303,10 +388,10 @@
 </fieldset>
 
 <fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
-    <legend>Start of Week:</legend>
-        <input name="key4" id="key4-0" value="0" checked="checked" type="radio">
+    <legend>Start of week:</legend>
+        <input name="key4" id="key4-0" value="0" type="radio">
         <label for="key4-0">S</label>
-        <input name="key4" id="key4-1" value="1" type="radio">
+        <input name="key4" id="key4-1" value="1" checked="checked" type="radio">
         <label for="key4-1">M</label>
         <input name="key4" id="key4-2" value="2" type="radio">
         <label for="key4-2">T</label>
@@ -321,17 +406,79 @@
 </fieldset>
 
     </div>
+	<div data-role="collapsible">
+		<h3>Weather</h3>
+
+<fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
+    <legend>Set weather position:</legend>
+        <input name="key536" id="key536-1" value="1" checked="checked" type="radio">
+        <label for="key536-1">GPS</label>
+        <input name="key536" id="key536-0" value="0" type="radio">
+        <label for="key536-0">Selected</label>
+</fieldset>	
+    <div class="ui-field-contain">
+      <label for="key537" id="label_key537">Selected:</label><br>
+      <input name="key537" id="trans_key537"  placeholder="from openweathermap.org" value="" data-mini="true" type="text" maxlength="25">
+    </div>		
+	<fieldset class="ui-grid-a">
+		<div class="ui-block-a"> <input type="Button" value="Get location (GPS)" onClick="getlocation();"> </div>
+	</fieldset>	
+<fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
+    <legend>Units of measurement:</legend>
+        <input name="key531" id="key531-1" value="1" checked="checked" type="radio">
+        <label for="key531-1">Celsius</label>
+        <input name="key531" id="key531-0" value="0" type="radio">
+        <label for="key531-0">Fahrenheit</label>
+</fieldset>		
+
+<fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
+    <legend>Time between checks for weather (min):</legend>
+        <input name="key533" id="key533-600" value="600" checked="checked" type="radio">
+        <label for="key533-600">10</label>
+        <input name="key533" id="key533-1200" value="1200" type="radio">
+        <label for="key533-1200">20</label>
+        <input name="key533" id="key533-1800" value="1800" type="radio">
+        <label for="key533-1800">30</label>
+        <input name="key533" id="key533-3600" value="3600" type="radio">
+        <label for="key533-3600">1 hour</label>
+        <input name="key533" id="key533-7200" value="7200" type="radio">
+        <label for="key533-7200">2 hours</label>
+</fieldset>
+
+<fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
+    <legend>Show location:</legend>
+        <input name="key544" id="key544-1" value="1" checked="checked" type="radio">
+        <label for="key544-1">Yes</label>
+        <input name="key544" id="key544-0" value="0" type="radio">
+        <label for="key544-0">No</label>
+</fieldset>
+
+<fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
+    <legend>Show update time:</legend>
+        <input name="key545" id="key545-1" value="1" checked="checked" type="radio">
+        <label for="key545-1">Yes</label>
+        <input name="key545" id="key545-0" value="0" type="radio">
+        <label for="key545-0">No</label>
+</fieldset>
+
+	</div>
 </div>
 <br />
         <div class="ui-body ui-body-c">
           <fieldset class="ui-grid-a">
-              <div class="ui-block-a"><button type="submit" data-theme="d" id="b-cancel">Cancel</button></div>
-              <div class="ui-block-b"><button type="submit" data-theme="a" id="b-submit">Submit</button></div>
+              <div class="ui-block-a"><button type="submit" data-theme="d" id="b-cancel">
+				  Cancel</button></div>
+              <div class="ui-block-b"><button type="submit" data-theme="a" id="b-submit">
+				  Submit</button></div>
           </fieldset>
         </div>
       </div>
     </div>
+
     <script>
+	  function utf8_to_b64(str) {
+        return window.btoa(unescape(encodeURIComponent(str)));
+      }
       function saveOptions() {
         var options = {
           'style_inv':     Number( $("input[name=key0]:checked").val() ),
@@ -346,8 +493,6 @@
           'intl_fmt_week': Number( $("input[name=key9]:checked").val() ),
           'vibe_pat_disconnect': Number( $("input[name=key11]:checked").val() ),
           'vibe_pat_connect':    Number( $("input[name=key12]:checked").val() ),
-          'trans_connected':    $("input[name=key527]").val(),
-          'trans_disconnected': $("input[name=key528]").val(),
           'trans_january':    $("input[name=key507]").val(),
           'trans_february':   $("input[name=key508]").val(),
           'trans_march':      $("input[name=key509]").val(),
@@ -360,6 +505,7 @@
           'trans_october':    $("input[name=key516]").val(),
           'trans_november':   $("input[name=key517]").val(),
           'trans_december':   $("input[name=key518]").val(),
+		  'trans_week':       $("input[name=key542]").val(),
           'trans_abbr_sunday':   $("input[name=key500]").val(),
           'trans_abbr_monday':   $("input[name=key501]").val(),
           'trans_abbr_tuesday':  $("input[name=key502]").val(),
@@ -374,6 +520,20 @@
           'trans_thursday':   $("input[name=key524]").val(),
           'trans_friday':     $("input[name=key525]").val(),
           'trans_saturday':   $("input[name=key526]").val(),
+		  'degree_style':    Number( $("input[name=key531]:checked").val()),		
+		  'first_page':    Number( $("input[name=key532]:checked").val()),	
+		  'weather_upd':     Number( $("input[name=key533]:checked").val() ),		  
+		  'battery_show':     Number( $("input[name=key534]:checked").val() ),
+		  'phone_battery_show':     Number( $("input[name=key539]:checked").val() ),		  
+		  'default_font':     Number( $("input[name=key535]:checked").val() ),
+		  'get_position':     Number( $("input[name=key536]:checked").val() ),
+		  'type_position':       $("input[name=key537]").val(),		
+		  'trans_getposition':       $("input[name=key538]").val(),		
+		  'auto_back':     Number( $("input[name=key540]:checked").val() ),		
+		  'data_over_time':     Number( $("input[name=key541]:checked").val() ),		
+		  'show_bt_connected':     Number( $("input[name=key543]:checked").val() ),	
+		  'show_location':     Number( $("input[name=key544]:checked").val() ),	
+		  'show_update_time':     Number( $("input[name=key545]:checked").val() ),			  
         }
         return options;
       }
@@ -383,6 +543,47 @@
         if (window.localStorage.pebble_timely_options) {
           ls_pto = JSON.parse(window.localStorage.pebble_timely_options);
           // the Pebble webview dies on the next line...
+		  
+		  $("input[name=key543][id=key543-"+ls_pto["show_bt_connected"]+"]").prop('checked',true);
+		  $("input[name=key543]").checkboxradio('refresh');		  
+		  
+		  $("input[name=key544][id=key544-"+ls_pto["show_location"]+"]").prop('checked',true);
+		  $("input[name=key544]").checkboxradio('refresh');
+
+		  $("input[name=key545][id=key545-"+ls_pto["show_update_time"]+"]").prop('checked',true);
+		  $("input[name=key545]").checkboxradio('refresh');			  
+		  
+		  $("input[name=key532][id=key532-"+ls_pto["first_page"]+"]").prop('checked',true);
+		  $("input[name=key532]").checkboxradio('refresh');
+		  
+		  $("input[name=key531][id=key531-"+ls_pto["degree_style"]+"]").prop('checked',true);
+		  $("input[name=key531]").checkboxradio('refresh');
+		  
+          $("input[name=key533][id=key533-"+ls_pto["weather_upd"]+"]").prop('checked',true);
+          $("input[name=key533]").checkboxradio('refresh');		  
+
+          $("input[name=key534][id=key534-"+ls_pto["battery_show"]+"]").prop('checked',true);
+          $("input[name=key534]").checkboxradio('refresh');	
+		  
+          $("input[name=key539][id=key539-"+ls_pto["phone_battery_show"]+"]").prop('checked',true);
+          $("input[name=key539]").checkboxradio('refresh');			  
+		  
+          $("input[name=key540][id=key540-"+ls_pto["auto_back"]+"]").prop('checked',true);
+          $("input[name=key540]").checkboxradio('refresh');			  
+		  
+          $("input[name=key541][id=key541-"+ls_pto["data_over_time"]+"]").prop('checked',true);
+          $("input[name=key541]").checkboxradio('refresh');			  
+
+          $("input[name=key535][id=key535-"+ls_pto["default_font"]+"]").prop('checked',true);
+          $("input[name=key535]").checkboxradio('refresh');		
+
+          $("input[name=key536][id=key536-"+ls_pto["get_position"]+"]").prop('checked',true);
+          $("input[name=key536]").checkboxradio('refresh');	
+
+          $("input[name=key537]").val(ls_pto["type_position"]);		
+
+          $("input[name=key538]").val(ls_pto["trans_getposition"]);			  
+		  
           $("input[name=key0][id=key0-"+ls_pto["style_inv"]+"]").prop('checked',true);
           $("input[name=key0]").checkboxradio('refresh');
           $("input[name=key1][id=key1-"+ls_pto["style_day_inv"]+"]").prop('checked',true);
@@ -409,10 +610,7 @@
             $("input[name=key12][id=key12-"+ls_pto["vibe_pat_connect"]+"]").prop('checked',true);
             $("input[name=key12]").checkboxradio('refresh');
           }
-          if ("trans_connected" in ls_pto) {
-            $("input[name=key527]").val(ls_pto["trans_connected"]);
-            $("input[name=key528]").val(ls_pto["trans_disconnected"]);
-          }
+
           if ("trans_january" in ls_pto) {
             $("input[name=key507]").val(ls_pto["trans_january"]);
             $("input[name=key508]").val(ls_pto["trans_february"]);
@@ -426,6 +624,7 @@
             $("input[name=key516]").val(ls_pto["trans_october"]);
             $("input[name=key517]").val(ls_pto["trans_november"]);
             $("input[name=key518]").val(ls_pto["trans_december"]);
+			$("input[name=key542]").val(ls_pto["trans_week"]);
           }
           if ("trans_abbr_sunday" in ls_pto) {
             $("input[name=key500]").val(ls_pto["trans_abbr_sunday"]);
@@ -458,14 +657,84 @@
           ls_pto = JSON.stringify(saveOptions());
           if (typeof window.localStorage !== "undefined") {
             window.localStorage.pebble_timely_options = ls_pto;
+			window.localStorage.pebble_tcw_lang="en";
           }
-          var location = "pebblejs://close#" + encodeURIComponent(ls_pto);
+//          var location = "pebblejs://close#" + encodeURIComponent(ls_pto);
+          var location = "pebblejs://close#" + utf8_to_b64(ls_pto);		  
           console.log("Warping to: " + location);
           console.log(location);
           document.location = location;
         });
 
       });
-    </script>
+	  function set_dafault_translate(){
+            $("input[name=key507]").val("January");
+            $("input[name=key508]").val("February");
+            $("input[name=key509]").val("March");
+            $("input[name=key510]").val("April");
+            $("input[name=key511]").val("May");
+            $("input[name=key512]").val("June");
+            $("input[name=key513]").val("July");
+            $("input[name=key514]").val("August");
+            $("input[name=key515]").val("September");
+            $("input[name=key516]").val("October");
+            $("input[name=key517]").val("November");
+            $("input[name=key518]").val("December");
+            $("input[name=key500]").val("Su");
+            $("input[name=key501]").val("Mn");
+            $("input[name=key502]").val("Tu");
+            $("input[name=key503]").val("We");
+            $("input[name=key504]").val("Th");
+            $("input[name=key505]").val("Fr");
+            $("input[name=key506]").val("Sa");
+            $("input[name=key520]").val("Sunday");
+            $("input[name=key521]").val("Monday");
+            $("input[name=key522]").val("Tuesday");
+            $("input[name=key523]").val("Wednesday");
+            $("input[name=key524]").val("Thursday");
+            $("input[name=key525]").val("Friday");
+            $("input[name=key526]").val("Saturday");
+			$("input[name=key538]").val("Find location");	
+			$("input[name=key542]").val("Wk");
+	  }	  
+	  
+      var coords;
+	  function getlocation(){
+		window.navigator.geolocation.getCurrentPosition(
+			function(pos) {coords = pos.coords; console.log(coords.latitude+ "  "+coords.longitude);
+				var response;
+				var req = new XMLHttpRequest();
+				console.log("http://api.openweathermap.org/data/2.5/find?" +"lat=" + coords.latitude + "&lon=" + coords.longitude + "&cnt=1");
+				req.open('GET', "http://api.openweathermap.org/data/2.5/find?" +
+						"lat=" + coords.latitude + "&lon=" + coords.longitude + "&cnt=1", true);
+				req.timeout = 30000;		 
+				req.ontimeout = function() {
+					console.log("Error request timeout");
+				}
+				req.onload = function(e) {
+					if (req.readyState == 4) {
+						if(req.status == 200) {
+							response = JSON.parse(req.responseText);
+					
+							if (response && response.list && response.list.length > 0) {
+								var weatherResult = response.list[0];
+								console.log("weatherResult.name "+weatherResult.name);
+								$("input[name=key537]").val(weatherResult.name);
+							}
+						}
+						else {
+							console.log("Error getting weather info (status " + req.status + ")");
+						}
+					}
+				}				
+				req.send(null);	
+			},
+			function(err) {  },
+			{ "timeout": 45000
+			}
+		);
+	
+	}	  
+   </script>
   </body>
 </html>

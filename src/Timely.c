@@ -204,6 +204,9 @@ void rotate_first_page();
 #define AK_GETPOSITION       538
 #define AK_DATA_OVER_TIME    541
 #define AK_TRANS_WEEK		542
+#define AK_SHOW_BT_CONNECTED	 543
+#define AK_SHOW_LOCATION	544
+#define AK_SHOW_UPDATE_TIME	545
 
 // primary coordinates
 #define DEVICE_WIDTH        144
@@ -268,6 +271,9 @@ typedef struct persist {
   uint8_t get_position;            // выбор позиции погоды
   char type_position[50];         // набраный населенный пункт
   uint8_t data_over_time;			// 1- дата над временем
+  uint8_t show_bt_connected;
+  uint8_t show_location;
+  uint8_t show_update_time;
 } __attribute__((__packed__)) persist;
 
 typedef struct persist_datetime_lang { // 249 bytes
@@ -315,6 +321,9 @@ persist settings = {
   .get_position = 1,     // GPS
   .type_position = "\0",
   .data_over_time = 1,
+  .show_bt_connected = 1,
+  .show_location = 1,
+  .show_update_time = 1,
 };
 
 persist_datetime_lang lang_datetime = {
@@ -432,15 +441,22 @@ void update_weather_info(Weather *weather) {
 		} else {
 			time_format = "%I:%M\n";
 		}
-		int up_min;
+//		int up_min;
 		if (is_inet_connected){
-			up_min=settings.weather_upd / 60;
+//			up_min=settings.weather_upd / 60;
 			strftime(time_text, sizeof(time_text), time_format, localtime(&weather->last_update_time));
-			snprintf(time_text1,20,"%s (%d)",time_text, up_min);
+//			snprintf(time_text1,20,"%s (%d)",time_text, up_min);
+						snprintf(time_text1,20,"%s",time_text);
 			if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "update %s",time_text);};
 			text_layer_set_text(weather_time_layer,time_text1);
+			if(settings.show_update_time==1){
+				layer_set_hidden(text_layer_get_layer(weather_time_layer), false);
+			}else{
+				layer_set_hidden(text_layer_get_layer(weather_time_layer), true);
+			}
 		}else{
 			text_layer_set_text(weather_time_layer,"Offline");
+			layer_set_hidden(text_layer_get_layer(weather_time_layer), false);
 		}
 
     }
@@ -1353,7 +1369,13 @@ void update_connection() {
     generate_vibe(settings.vibe_pat_connect);  // non-op, by default
     bitmap_layer_set_bitmap(bmp_connection_layer, image_connection_icon);
 	is_inet_connected = true;
+	if(settings.show_bt_connected==1){
+		layer_set_hidden(bitmap_layer_get_layer(bmp_connection_layer), false);
+	}else{
+		layer_set_hidden(bitmap_layer_get_layer(bmp_connection_layer), true);	
+	}
   } else {
+  	layer_set_hidden(bitmap_layer_get_layer(bmp_connection_layer), false);
     generate_vibe(settings.vibe_pat_disconnect);  // because, this is bad...
     bitmap_layer_set_bitmap(bmp_connection_layer, image_noconnection_icon);
 	layer_set_hidden(bitmap_layer_get_layer(sms_incom_layer), true);
@@ -1414,16 +1436,27 @@ static void window_load(Window *window) {
 	text_layer_set_overflow_mode(weather_name_layer, GTextOverflowModeFill);
 	layer_add_child(weather_layer, text_layer_get_layer(weather_name_layer));
 	text_layer_set_text(weather_name_layer,lang_gen.getposition);
-
+	
+	if(settings.show_location==0){
+		layer_set_hidden(text_layer_get_layer(weather_name_layer), true);
+	}else{
+		layer_set_hidden(text_layer_get_layer(weather_name_layer), false);	
+	}
+	
+	
 	weather_time_layer = text_layer_create(GRect(50,50,94,15));
 	text_layer_set_text_color(weather_time_layer, GColorWhite);
     text_layer_set_background_color(weather_time_layer, GColorClear);
 	text_layer_set_font(weather_time_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
-	text_layer_set_text_alignment(weather_time_layer, GTextAlignmentRight);
+	text_layer_set_text_alignment(weather_time_layer, GTextAlignmentCenter);
 	text_layer_set_overflow_mode(weather_time_layer, GTextOverflowModeFill);
 	layer_add_child(weather_layer, text_layer_get_layer(weather_time_layer));
 //	text_layer_set_text(weather_time_layer,"Обновл..");
-
+	if(settings.show_update_time==1){
+		layer_set_hidden(text_layer_get_layer(weather_time_layer), false);
+	}else{
+		layer_set_hidden(text_layer_get_layer(weather_time_layer), true);
+	}
 	
     layer_add_child(window_layer, weather_layer);  
   
@@ -1759,6 +1792,33 @@ void in_configuration_handler(DictionaryIterator *received, void *context) {
 		update_week_text(week_layer);
 	}
 	
+	Tuple *show_bt_connected = dict_find(received , AK_SHOW_BT_CONNECTED);
+	if(show_bt_connected != NULL)	{
+		settings.show_bt_connected = show_bt_connected->value->uint8;
+		update_connection();
+	}
+	
+	Tuple *show_location = dict_find(received , AK_SHOW_LOCATION);
+	if(show_location != NULL)	{
+		settings.show_location = show_location->value->uint8;
+		if(settings.show_location==0){
+			layer_set_hidden(text_layer_get_layer(weather_name_layer), true);
+		}else{
+			layer_set_hidden(text_layer_get_layer(weather_name_layer), false);		
+		}
+	}
+	
+	Tuple *show_update_time = dict_find(received , AK_SHOW_UPDATE_TIME);
+	if(show_update_time != NULL)	{
+		settings.show_update_time = show_update_time->value->uint8;
+		if(settings.show_update_time==1){
+			layer_set_hidden(text_layer_get_layer(weather_time_layer), true);
+		}else{
+			layer_set_hidden(text_layer_get_layer(weather_time_layer), false);
+		}
+	}
+	
+	
     Tuple *style_inv = dict_find(received, AK_STYLE_INV);
     if (style_inv != NULL) {
       settings.inverted = style_inv->value->uint8;
@@ -1990,6 +2050,7 @@ void in_configuration_handler(DictionaryIterator *received, void *context) {
         snprintf(type_getposition, sizeof(type_getposition), "%s\n", getposition->value->cstring);	
 		strncpy(lang_gen.getposition, type_getposition, sizeof(type_getposition));
 		if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "lang_gen getposition %s",lang_gen.getposition);};
+
 	}
     // end translations...
 
@@ -2143,17 +2204,26 @@ void my_in_rcv_handler(DictionaryIterator *received, void *context) {
 			update_weather_info(weather);
 //			app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "my_in_recv_hand upd_weather_info %s",weather->name);
 		};
+		if(settings.show_location==0){
+			layer_set_hidden(text_layer_get_layer(weather_name_layer), true);
+		}else{
+			layer_set_hidden(text_layer_get_layer(weather_name_layer), false);
+		}
 		if(set_weather->value->uint8==2){
 			text_layer_set_text(weather_name_layer,"Not Find Location");
+			layer_set_hidden(text_layer_get_layer(weather_name_layer), false);
 		}
 		if(set_weather->value->uint8==0){
 			text_layer_set_text(weather_name_layer,"No Connect");
+			layer_set_hidden(text_layer_get_layer(weather_name_layer), false);
 		}
 		if(set_weather->value->uint8==3){
 			text_layer_set_text(weather_name_layer,"GPS error");
+			layer_set_hidden(text_layer_get_layer(weather_name_layer), false);
 		}
 		if(set_weather->value->uint8==3){
-			text_layer_set_text(weather_name_layer,"I-net Eerror");
+			text_layer_set_text(weather_name_layer,"I-net Error");
+			layer_set_hidden(text_layer_get_layer(weather_name_layer), false);
 		}		
 	
 	}
