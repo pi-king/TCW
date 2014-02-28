@@ -1,0 +1,7 @@
+﻿<?php
+$llist=array(
+"ru"=>array("file"=>"russian.txt",lang=>"Русский"),
+"en"=>array("file"=>"english.txt",lang=>"English"),
+"ua"=>array("file"=>"ukraine.txt",lang=>"Українська")
+)
+?>

@@ -126,6 +126,8 @@ GFont gothic28;
 GFont roboto49;
 
 void rotate_first_page();
+void accel_int(AccelAxisType axis, int32_t direction);
+static void set_current_page();
 // define the persistent storage key(s)
 #define PERSIST_DATA_MAX_LENGTH 1024
 #define   PK_SETTINGS      10
@@ -1444,7 +1446,7 @@ static void window_load(Window *window) {
 	}
 	
 	
-	weather_time_layer = text_layer_create(GRect(50,50,94,15));
+	weather_time_layer = text_layer_create(GRect(65,50,77,15));
 	text_layer_set_text_color(weather_time_layer, GColorWhite);
     text_layer_set_background_color(weather_time_layer, GColorClear);
 	text_layer_set_font(weather_time_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
@@ -1842,7 +1844,15 @@ void in_configuration_handler(DictionaryIterator *received, void *context) {
 	if (first_page !=NULL) {
       settings.first_page = first_page->value->uint8;
 //	  show_calendar = (settings.first_page==1)? true:false;
-	  rotate_first_page();
+	  if(settings.first_page==0 || settings.first_page==1){
+		accel_tap_service_subscribe(accel_int);
+		rotate_first_page();
+	  }
+	  if(settings.first_page==2 || settings.first_page==3){
+		accel_tap_service_unsubscribe();
+		current_page=settings.first_page;
+		set_current_page(NULL);
+	  }
 	}
 	
 	Tuple *weather_upd = dict_find(received, AK_WEATHER_UPD);
@@ -2273,16 +2283,20 @@ static void set_current_page() {
 	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "set current page %d",current_page);
 	if (current_page==settings.first_page){ auto_back_fp = NULL;}
 	switch(current_page){
-		case 0:{
-			layer_set_hidden(calendar_layer, false);
-			layer_set_hidden(weather_layer, true);	
-			return;
-		}
-		case 1:{
-			layer_set_hidden(weather_layer, false);
-			layer_set_hidden(calendar_layer, true);
-			return;
-		}
+		case 0:
+		case 3:
+			{
+				layer_set_hidden(calendar_layer, false);
+				layer_set_hidden(weather_layer, true);	
+				return;
+			}
+		case 1:
+		case 2:
+			{
+				layer_set_hidden(weather_layer, false);
+				layer_set_hidden(calendar_layer, true);
+				return;
+			}
 	}	
 }
 
@@ -2375,8 +2389,11 @@ static void init(void) {
   bluetooth_connection_service_subscribe(&handle_bluetooth);
   handle_bluetooth(bluetooth_connection_service_peek()); // initialize
   
-  accel_tap_service_subscribe(accel_int);
-  
+  if(settings.first_page==0 || settings.first_page==1){
+	accel_tap_service_subscribe(accel_int);
+  }
+  current_page=settings.first_page;
+  set_current_page(NULL);
   
   vibe_suppression = false;
   

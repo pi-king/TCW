@@ -169,7 +169,7 @@ Pebble.addEventListener("ready", function(e) {
 
 Pebble.addEventListener("showConfiguration", function(e) {
 //  console.log("Configuration window launching...");
-  Pebble.openURL("http://pebblewatch.pw/2/2.0.13.html" + '?_=' + new Date().getTime() );
+  Pebble.openURL("http://pebblewatch.pw/2/setup/index.php" + '?_=' + new Date().getTime()+"&version=16" );
 });
 
 Pebble.addEventListener("appmessage", function(e) {
