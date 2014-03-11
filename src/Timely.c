@@ -1147,7 +1147,7 @@ static void battery_status_send(void *data) {
 
 }
 static void fn_battery_blink(void *data){
-	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "battery blink timer"); 
+	if (DEBUGLOG) {app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "battery blink timer"); }
 	battery_blink = !battery_blink;
 	at_battery_blink = NULL;
 	layer_mark_dirty(bitmap_layer_get_layer(pp_battpebble_status));

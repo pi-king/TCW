@@ -169,7 +169,7 @@ Pebble.addEventListener("ready", function(e) {
 
 Pebble.addEventListener("showConfiguration", function(e) {
 //  console.log("Configuration window launching...");
-  Pebble.openURL("http://pebblewatch.pw/2/setup/index.php" + '?_=' + new Date().getTime()+"&version=16" );
+  Pebble.openURL("http://pebblewatch.pw/2/setup/index.php" + '?_=' + new Date().getTime()+"&version=17" );
 });
 
 Pebble.addEventListener("appmessage", function(e) {
@@ -352,12 +352,13 @@ var Base64 = {
 
 function b64_to_utf8( str ) {
 //  console.log("utf_enc "+base64.decode(dtr));
-  return decodeURIComponent(escape(Base64.decode( str )));
+	var	str1=str.replace(/ +/g, '+');
+  return decodeURIComponent(escape(Base64.decode( str1 )));
 }
 
 Pebble.addEventListener("webviewclosed", function(e) {
 //  console.log("Configuration closed");
-//  console.log(Base64.decode(e.response));
+//  console.log("base64 decode:" + e.response);
 //  var options = JSON.parse(decodeURIComponent(e.response));
   var options = JSON.parse(b64_to_utf8(e.response));  
 //  utf8enc(options);
