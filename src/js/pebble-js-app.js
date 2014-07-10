@@ -12,19 +12,71 @@ var weather = {
 	"name": "",
 	"country": ""
 };
+var weather4 = {
+	"temperature": -461,
+	"conditions": 0,
+	"isDay": true,
+	"lastUpdate": 0,
+	"name": "",
+	"country": "",
+/*	"t":[{"temperature": -461,"conditions": 0,"isDay": true,"time":0},
+		 {"temperature": -461,"conditions": 0,"isDay": true,"time":0},
+		 {"temperature": -461,"conditions": 0,"isDay": true,"time":0},
+		 {"temperature": -461,"conditions": 0,"isDay": true,"time":0}
+		],*/
+	"temperature0": -461,
+	"conditions0": 0,
+	"isDay0": true,
+	"time0" : 0,
+
+	"temperature6": -461,
+	"conditions6": 0,
+	"isDay6": true,
+	"time6" : 0,
+	
+	"temperature12": -461,
+	"conditions12": 0,
+	"isDay12": true,
+	"time12":0,
+	
+	"temperature18": -461,
+	"conditions18": 0,
+	"isDay18": true,
+	"time18":0
+}
+
 var wlocation = {
 	"getPosition": 1,
 	"typePosition" : "",
-	"requestWeather": 0
+	"requestWeather": 0,
+	"countWeather":  1,
+	"WeatherPeriod": 6
 };
 var prevMessages = {};
 var coords;
 
 var maxWeatherUpdateFreq = 10 * 60;
 
+Date.prototype.myFormat = function(){
+  var dd=this.getDate();
+  if(dd<10)dd='0'+dd;
+  var mm=this.getMonth()+1;
+  if(mm<10)mm='0'+mm;
+  var yyyy=this.getFullYear();
+  var hh=this.getHours();
+  if(hh<10)hh='0'+hh;
+  var mn=this.getMinutes();
+  if (mn<10) mn='0'+mn;
+  var ss=this.getSeconds();
+  if(ss<10) ss='0'+ss;
+  return String(yyyy+"-"+mm+"-"+dd+" "+hh+":"+mn+":"+ss);
+}
 
 function fetchWeather() {
-//	if(Math.round(Date.now()/1000) - weather.lastUpdate >= maxWeatherUpdateFreq) {
+	var request="http://api.openweathermap.org/data/2.5/find?" +"q=" + wlocation["typePosition"] + "&cnt=5";
+	if(wlocation["countWeather"]==4){
+		request="http://api.openweathermap.org/data/2.5/forecast?" +"q=" + wlocation["typePosition"] + "&cnt=5";
+	}
 	if(wlocation["getPosition"]==1){
 		window.navigator.geolocation.getCurrentPosition(
 			function(pos) { coords = pos.coords; },
@@ -33,73 +85,29 @@ function fetchWeather() {
 //			, "maximumAge": 60000 
 			}
 		);
-		
-
-		var response;
-		var req = new XMLHttpRequest();
-		console.log("http://api.openweathermap.org/data/2.5/find?" +"lat=" + coords.latitude + "&lon=" + coords.longitude + "&cnt=1");
-		req.open('GET', "http://api.openweathermap.org/data/2.5/find?" +
-				 "lat=" + coords.latitude + "&lon=" + coords.longitude + "&cnt=1", true);
-		req.timeout = 30000;		 
-		req.ontimeout = function() {
-			console.log("Error request timeout");
-			Pebble.sendAppMessage({"setWeather":3});
+		request="http://api.openweathermap.org/data/2.5/find?" + "lat=" + coords.latitude + "&lon=" + coords.longitude + "&cnt=1";
+		if(wlocation["countWeather"]==4){
+			request="http://api.openweathermap.org/data/2.5/forecast?" + "lat=" + coords.latitude + "&lon=" + coords.longitude + "&cnt=1"
 		}
-		req.onload = function(e) {
-			if (req.readyState == 4) {
-				if(req.status == 200) {
-					response = JSON.parse(req.responseText);
-					
-					if (response && response.list && response.list.length > 0) {
-						var weatherResult = response.list[0];
-						var now = new Date();
-						var sunCalc = SunCalc.getTimes(now, coords.latitude, coords.longitude);
-						
-						sendWeather(weather = {
-							"temperature": weatherResult.main.temp,
-							"conditions": weatherResult.weather[0].id,
-							"isDay": sunCalc.sunset > now && now > sunCalc.sunrise,
-							"lastUpdate": Math.round(now.getTime() / 1000),
-							"name": unescape( encodeURIComponent(weatherResult.name)),
-							"country": weatherResult.sys.country
-						});
-					}else{
-						if(response && response.list && response.list.length == 0) {
-							Pebble.sendAppMessage({"setWeather":2});
-						}else{
-							Pebble.sendAppMessage({"setWeather":0});
-						}
-					
-					}
-				}
-				else {
-					console.log("Error getting weather info (status " + req.status + ")");
-					Pebble.sendAppMessage({"setWeather":4});
-				}
-			}
-		}
-		req.send(null);
+	}	
+	var response;
+	var req = new XMLHttpRequest();
+//	console.log(request);
+	req.open('GET', request, true);
+	req.timeout = 30000;		 
+	req.ontimeout = function() {
+//		console.log("Error request timeout");
+		Pebble.sendAppMessage({"setWeather":3});
 	}
-	if(wlocation["getPosition"]==0 && wlocation["typePosition"].length>0){
-		var response;
-		var req = new XMLHttpRequest();
-		console.log("http://api.openweathermap.org/data/2.5/find?" +"q=" + wlocation["typePosition"] + "&cnt=1");
-		req.open('GET', "http://api.openweathermap.org/data/2.5/find?" +"q=" + wlocation["typePosition"] + "&cnt=1", true);
-		req.timeout = 30000;		 
-		req.ontimeout = function() {
-			console.log("Error request timeout");
-			sendWeather(weather);
-		}
-		req.onload = function(e) {
-			if (req.readyState == 4) {
-				if(req.status == 200) {
-					response = JSON.parse(req.responseText);
-					
-					if (response && response.list && response.list.length > 0) {
+	req.onload = function(e) {
+		if (req.readyState == 4) {
+			if(req.status == 200) {
+				response = JSON.parse(req.responseText);
+				if (response && response.list && response.list.length > 0) {
+					if(wlocation["countWeather"]==1){
 						var weatherResult = response.list[0];
 						var now = new Date();
 						var sunCalc = SunCalc.getTimes(now, weatherResult.coord.lat, weatherResult.coord.lon);
-						
 						sendWeather(weather = {
 							"temperature": weatherResult.main.temp,
 							"conditions": weatherResult.weather[0].id,
@@ -108,32 +116,85 @@ function fetchWeather() {
 							"name": unescape( encodeURIComponent(weatherResult.name)),
 							"country": weatherResult.sys.country
 						});
-					}else{
-						if(response && response.list && response.list.length == 0) {
-							Pebble.sendAppMessage({"setWeather":2});
-						}else{
-							Pebble.sendAppMessage({"setWeather":0});
+					}	
+					if(wlocation["countWeather"]==4){	
+						var weatherResult = response;
+						var now = new Date();
+//						console.log("lat="+weatherResult.city.coord.lat+"  lon="+weatherResult.city.coord.lon);
+						var hours=wlocation["WeatherPeriod"];//6;
+						var bhours= now.getHours();
+						now.setMinutes(0,0);
+						bhours=bhours-(bhours%3);
+						var wdat= new Array(5);
+						var whours=new Array(5);
+						var wtime=new Array(5);
+						now.setHours(bhours);
+						for (var i=0; i<5; i++){
+							wdat[i]=now.myFormat(now);
+							var sunCalc = SunCalc.getTimes(now, weatherResult.city.coord.lat, weatherResult.city.coord.lon);
+							whours[i]= sunCalc.sunset > now && now > sunCalc.sunrise;
+							wtime[i]=now.getTime();
+							now.setHours(now.getHours()+hours);
+//							console.log('i='+i+'  wdat[i]='+wdat[i]+' wtime[i]='+wtime[i]+ ' hours='+hours);
 						}
-					
+				
+						var cnt=weatherResult.list.length;
+						var wtemp=new Array(5);
+						var wcond=new Array(5);
+						for(var i=0; i<cnt; i++){
+							for(var k=0;k<5;k++){
+								if (weatherResult.list[i].dt_txt==wdat[k]){
+									wtemp[k]=weatherResult.list[i].main.temp;
+									wcond[k]=weatherResult.list[i].weather[0].id;
+//									console.log('i='+i+' k='+k+'  wtemp[k]='+wtemp[k]+' wcond[k]='+wcond[k]);
+								}									
+							}
+						}
+						sendWeather4(weather4 = {
+							"lastUpdate": Math.round(now.getTime() / 1000),
+							"name": unescape( encodeURIComponent(weatherResult.city.name)),
+							"country": unescape( encodeURIComponent(weatherResult.city.country)),
+							"temperature": wtemp[0],
+							"conditions": wcond[0],
+							"isDay": whours[0],
+							"temperature0": wtemp[1],
+							"conditions0": wcond[1],
+							"isDay0": whours[1],
+							"time0": wtime[1],
+							"temperature6": wtemp[2],
+							"conditions6": wcond[2],
+							"isDay6": whours[2],
+							"time6": wtime[2],
+							"temperature12": wtemp[3],
+							"conditions12": wcond[3],
+							"isDay12": whours[3],
+							"time12": wtime[3],
+							"temperature18": wtemp[4],
+							"conditions18": wcond[4],
+							"isDay18": whours[4],
+							"time18": wtime[4]
+						});						
+					}
+				}else{
+					if(response && response.list && response.list.length == 0) {
+						Pebble.sendAppMessage({"setWeather":2});
+					}else{
+						Pebble.sendAppMessage({"setWeather":0});
 					}
 				}
-				else {
-					console.log("Error getting weather info (status " + req.status + ")");
-					Pebble.sendAppMessage({"setWeather":4});
-				}
+			}
+			else {
+//				console.log("Error getting weather info (status " + req.status + ")");
+				Pebble.sendAppMessage({"setWeather":5});
 			}
 		}
-		req.send(null);		
 	}
-//	}
-//	else {
-//		console.warn("Weather update requested too soon; loading from cache (" + (new Date()).toString() + ")");
-//		sendWeather(weather);
-//	}
+	req.send(null);
 }
 
 function sendWeather(weather) {
-	console.warn("send Weather :Location "+weather.name);
+//	console.warn("send Weather :Location "+weather.name);
+//	console.log("Weather = " + JSON.stringify(weather));
 	Pebble.sendAppMessage(mergeObjects({
 		"temperature": Math.round(weather.temperature * 100),
 		"conditions": weather.conditions + (weather.isDay ? 1000 : 0),
@@ -141,10 +202,30 @@ function sendWeather(weather) {
 		"country": weather.country
 	}, {"setWeather": 1}));
 }
-
-//function sendPreferences(prefs) {
-//	Pebble.sendAppMessage(mergeObjects(prefs, {"setPrefs": 1}));
-//}
+function sendWeather4(weather4) {
+	var offsetHours = new Date().getTimezoneOffset() ;
+	offsetHours=offsetHours*(-1);
+//	console.warn("send Weather4 :Location "+weather4.name);
+//	console.log("Weather4 = " + JSON.stringify(weather4));
+	Pebble.sendAppMessage(mergeObjects({
+		"weathername": weather4.name,
+		"country": weather4.country,
+		"temperature": Math.round(weather4.temperature * 100),
+		"conditions": weather4.conditions + (weather4.isDay ? 1000 : 0),
+		"temperature0": Math.round(weather4.temperature0 * 100),
+		"conditions0": weather4.conditions0 + (weather4.isDay0 ? 1000 : 0),
+		"time0": weather4.time0/1000 + offsetHours*60,
+		"temperature6": Math.round(weather4.temperature6 * 100),
+		"conditions6": weather4.conditions6 + (weather4.isDay6 ? 1000 : 0),
+		"time6": weather4.time6/1000 + offsetHours*60,
+		"temperature12": Math.round(weather4.temperature12 * 100),
+		"conditions12": weather4.conditions12 + (weather4.isDay12 ? 1000 : 0),
+		"time12": weather4.time12/1000 + offsetHours*60,
+		"temperature18": Math.round(weather4.temperature18 * 100),
+		"conditions18": weather4.conditions18 + (weather4.isDay18 ? 1000 : 0),
+		"time18": weather4.time18/1000 + offsetHours*60
+	}, {"setWeather": 4}));
+}
 
 function mergeObjects(a, b) {
 	for(var key in b)
@@ -158,88 +239,66 @@ function queryify(obj) {
 	return "?" + queries.join("&");
 }
 
-// -------------------------------------- end weather
-
 Pebble.addEventListener("ready", function(e) {
-  //console.log("Connect! " + e.ready);
-  // begin weather
-  prevMessages = {};
-  // end weather
+	prevMessages = {};
 });
 
 Pebble.addEventListener("showConfiguration", function(e) {
-//  console.log("Configuration window launching...");
-  Pebble.openURL("http://pebblewatch.pw/2/setup/index.php" + '?_=' + new Date().getTime()+"&version=17" );
+	Pebble.openURL("http://pebblewatch.pw/tcw/setup/index.php" + '?_=' + new Date().getTime()+"&version=24" );
 });
 
 Pebble.addEventListener("appmessage", function(e) {
-//console.warn("App message:");
-wlocation["requestWeather"] = 0;
-for(var key in e.payload)
-	console.log("-" + key + "-: " + e.payload[key]+ " mt:"+e.payload.message_type);
-  //console.log("Received message: type " + e.payload.message_type)
-  switch(e.payload.message_type) {
-  case 100:
-    saveBatteryValue(e);
-    break;
-  case 103:
-    sendTimezoneToWatch();
-    break;
-  case 21:
-	console.log(" 21 fetch Weather	 ");
-	fetchWeather();	
-  }
-//  if(e.payload["getPosition"]) {
-//	location.getPosition=e.payload["getPosition"];
-//  }
-//  if(e.payload["typePosition"]) {
-//	location.typePosition=e.payload["typePosition"];
-//  }
-  
+	wlocation["requestWeather"] = 0;
+	//for(var key in e.payload)
+	//	console.log("-" + key + "-: " + e.payload[key]+ " mt:"+e.payload.message_type);
+	//console.log("Received message: type " + e.payload.message_type)
+	switch(e.payload.message_type) {
+	case 100:
+		saveBatteryValue(e);
+		break;
+	case 103:
+		sendTimezoneToWatch();
+		break;
+	case 21:
+//		console.log(" 21 fetch Weather	 ");
+		fetchWeather();	
+	}
+
 	if(e.payload["requestWeather"] == 1) {
-		console.log(" fetch Weather	 ");
 //		wlocation["get_weather"] = 1;
 		for(var key in wlocation){
 			if(e.payload[key] !== "undefined"){ wlocation[key] = e.payload[key];}
-			console.log("	 " + key + ": " + e.payload[key]);
+//			console.log("	 " + key + ": " + e.payload[key]);
 		}
 //		fetchWeather();
 	}  
-//	if(e.payload["getPosition"]
-  // begin weather
 	if(e.payload["setPrefs"] == 1) {
 		for(var key in prefs)
 			if(e.payload[key] !== "undefined") { prefs[key] = e.payload[key]; }
 	}
-//	else {
-//		console.warn("Received unknown app message:");
-//		for(var key in e.payload)
-//			console.log("	 " + key + ": " + e.payload[key]);
-//	}  
-  // end weather
-    console.log(" gv " + wlocation["requestWeather"]+ " gp "+wlocation["getPosition"]+ " tp "+ wlocation["typePosition"]);
+//    console.log(" gv " + wlocation["requestWeather"]+ " gp "+wlocation["getPosition"]+ " tp "+ wlocation["typePosition"]+ " count "+wlocation["countWeather"]);
 	if (wlocation["requestWeather"] ==1){
+//		console.log(" fetch Weather	 ");
 		fetchWeather();
 	}
 });
 
 function saveBatteryValue(e) {
-  console.log("Battery: " + e.payload.send_batt_percent + "%, Charge: " + e.payload.send_batt_charging + ", Plugged: " + e.payload.send_batt_plugged);
+//  console.log("Battery: " + e.payload.send_batt_percent + "%, Charge: " + e.payload.send_batt_charging + ", Plugged: " + e.payload.send_batt_plugged);
  // TODO - actually store these in localStorage along with a date object in some useful manner
 }
 
 function sendTimezoneToWatch() {
-  var offsetHours = new Date().getTimezoneOffset() / 60;
-  // 5 means GMT-5, -5 means GMT+5 ... -12 through +14 are the valid options
-  Pebble.sendAppMessage({ message_type: 103, timezone_offset: offsetHours },
-    function(e) {
-      console.log("Sent TZ message (" + offsetHours + ") with transactionId=" + e.data.transactionId);
-    },
-    function(e) {
-      console.log("Unable to deliver TZ message with transactionId=" + e.data.transactionId
-        + " Error is: " + e.error.message);
-    }
-  );
+	var offsetHours = new Date().getTimezoneOffset() / 60;
+	// 5 means GMT-5, -5 means GMT+5 ... -12 through +14 are the valid options
+	Pebble.sendAppMessage({ message_type: 103, timezone_offset: offsetHours },
+		function(e) {
+//			console.log("Sent TZ message (" + offsetHours + ") with transactionId=" + e.data.transactionId);
+		},
+		function(e) {
+//			console.log("Unable to deliver TZ message with transactionId=" + e.data.transactionId + " Error is: " + e.error.message);
+		}
+	);
 }
 
 /** 
@@ -250,140 +309,52 @@ function sendTimezoneToWatch() {
  **/   
  
 var Base64 = {
-   _keyStr : "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",
-   //метод для кодировки в base64 на javascript 
-    encode : function (input) {
-      var output = "";
-      var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
-      var i = 0
-      input = Base64._utf8_encode(input);
-         while (i < input.length) {
-       chr1 = input.charCodeAt(i++);
-        chr2 = input.charCodeAt(i++);
-        chr3 = input.charCodeAt(i++);
-       enc1 = chr1 >> 2;
-        enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
-        enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
-        enc4 = chr3 & 63;
-       if( isNaN(chr2) ) {
-           enc3 = enc4 = 64;
-        }else if( isNaN(chr3) ){
-          enc4 = 64;
-        }
-       output = output +
-        this._keyStr.charAt(enc1) + this._keyStr.charAt(enc2) +
-        this._keyStr.charAt(enc3) + this._keyStr.charAt(enc4);
-     }
-      return output;
-    },
- 
-   //метод для раскодировки из base64 
-    decode : function (input) {
-      var output = "";
-      var chr1, chr2, chr3;
-      var enc1, enc2, enc3, enc4;
-      var i = 0;
-     input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
-     while (i < input.length) {
-       enc1 = this._keyStr.indexOf(input.charAt(i++));
-        enc2 = this._keyStr.indexOf(input.charAt(i++));
-        enc3 = this._keyStr.indexOf(input.charAt(i++));
-        enc4 = this._keyStr.indexOf(input.charAt(i++));
-       chr1 = (enc1 << 2) | (enc2 >> 4);
-        chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
-        chr3 = ((enc3 & 3) << 6) | enc4;
-       output = output + String.fromCharCode(chr1);
-       if( enc3 != 64 ){
-          output = output + String.fromCharCode(chr2);
-        }
-        if( enc4 != 64 ) {
-          output = output + String.fromCharCode(chr3);
-        }
-   }
-//   output = Base64._utf8_decode(output);
-     return output;
-   },
-   // метод для кодировки в utf8 
-    _utf8_encode : function (string) {
-      string = string.replace(/\r\n/g,"\n");
-      var utftext = "";
-      for (var n = 0; n < string.length; n++) {
-        var c = string.charCodeAt(n);
-       if( c < 128 ){
-          utftext += String.fromCharCode(c);
-        }else if( (c > 127) && (c < 2048) ){
-          utftext += String.fromCharCode((c >> 6) | 192);
-          utftext += String.fromCharCode((c & 63) | 128);
-        }else {
-          utftext += String.fromCharCode((c >> 12) | 224);
-          utftext += String.fromCharCode(((c >> 6) & 63) | 128);
-          utftext += String.fromCharCode((c & 63) | 128);
-        }
-     }
-      return utftext;
- 
-    },
- 
-    //метод для раскодировки из urf8 
-    _utf8_decode : function (utftext) {
-      var string = "";
-      var i = 0;
-      var c = c1 = c2 = 0;
-      while( i < utftext.length ){
-        c = utftext.charCodeAt(i);
-       if (c < 128) {
-          string += String.fromCharCode(c);
-          i++;
-        }else if( (c > 191) && (c < 224) ) {
-          c2 = utftext.charCodeAt(i+1);
-          string += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
-          i += 2;
-        }else {
-          c2 = utftext.charCodeAt(i+1);
-          c3 = utftext.charCodeAt(i+2);
-          string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
-          i += 3;
-        }
-     }
-     return string;
-    }
- }
+	_keyStr : "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",
+	//метод для раскодировки из base64 
+	decode : function (input) {
+	var output = "";
+	var chr1, chr2, chr3;
+	var enc1, enc2, enc3, enc4;
+	var i = 0;
+	input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
+	while (i < input.length) {
+		enc1 = this._keyStr.indexOf(input.charAt(i++));
+		enc2 = this._keyStr.indexOf(input.charAt(i++));
+		enc3 = this._keyStr.indexOf(input.charAt(i++));
+		enc4 = this._keyStr.indexOf(input.charAt(i++));
+		chr1 = (enc1 << 2) | (enc2 >> 4);
+		chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+		chr3 = ((enc3 & 3) << 6) | enc4;
+		output = output + String.fromCharCode(chr1);
+		if( enc3 != 64 ){
+			output = output + String.fromCharCode(chr2);
+		}
+		if( enc4 != 64 ) {
+			output = output + String.fromCharCode(chr3);
+		}
+	}
+	return output;
+	}
+}
 
 
 function b64_to_utf8( str ) {
-//  console.log("utf_enc "+base64.decode(dtr));
 	var	str1=str.replace(/ +/g, '+');
-  return decodeURIComponent(escape(Base64.decode( str1 )));
+	return decodeURIComponent(escape(Base64.decode( str1 )));
 }
 
 Pebble.addEventListener("webviewclosed", function(e) {
-//  console.log("Configuration closed");
-//  console.log("base64 decode:" + e.response);
-//  var options = JSON.parse(decodeURIComponent(e.response));
-  var options = JSON.parse(b64_to_utf8(e.response));  
-//  utf8enc(options);
-//    var options = JSON.parse(b64_to_utf8(e.response));
-//  console.log("Options = " + JSON.stringify(options));
-  var transactionId = Pebble.sendAppMessage(mergeObjects(options, {"setPrefs": 1}),//{"setPrefs": 1}, options,
-    function(e) {
-      console.log("Successfully delivered message with transactionId=" + e.data.transactionId);
-    },
-    function(e) {
-      console.log("Unable to deliver message with transactionId=" + e.data.transactionId
-        + " Error is: " + e.error.message);
-    }
-  );
-  // begin weather
- // 	if(e && e.response) {
-//		var newPrefs = JSON.parse(e.response);
-//		for(var key in prefs) {
-//			if(newPrefs[key] !== "undefined")
-//				prefs[key] = parseInt(newPrefs[key]);
-//		}
-//		
-//		sendPreferences(prefs);
-//	}
-  // end weather
+	var options = JSON.parse(b64_to_utf8(e.response));  
+//	console.log(JSON.stringify(options));
+	var transactionId = Pebble.sendAppMessage(mergeObjects(options, {"setPrefs": 1}),//{"setPrefs": 1}, options,
+		function(e) {
+//			console.log("Successfully delivered message with transactionId=" + e.data.transactionId);
+		},
+		function(e) {
+//			console.log("Unable to deliver message with transactionId=" + e.data.transactionId  + " Error is: " + e.error.message);
+		}
+	);
+
 });
 
 

@@ -2,6 +2,8 @@
 #define futura_weather_redux_config_h
 
 enum AppMessageKey {
+	PK_WEATHER = 1016,
+	REQUEST_WEATHER_COUNT = 17,
 	REQUEST_WEATHER_MSG_KEY = 21,
 	SET_WEATHER_MSG_KEY = 22,
     WEATHER_TEMPERATURE_MSG_KEY = 23,
@@ -31,5 +33,18 @@ typedef enum {
 	TEMP_FORMAT_CELCIUS = 1,
 	TEMP_FORMAT_FAHRENHEIT = 0
 } TempFormat;
+
+/*typedef struct Send_val {
+	uint8_t array[10];
+	union{
+	int status;
+	char version;
+	char batprc;
+	bool batcharg;
+	bool batplug;
+	bool batreqw;
+	char batshow;
+	};
+} Send_val;*/
 
 #endif

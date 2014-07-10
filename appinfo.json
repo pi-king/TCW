@@ -1,16 +1,17 @@
 {
   "uuid": "17E9E8A6-C57D-46C5-A8DA-2C7211DE0B73",
   "shortName": "TCW",
-  "longName": "Time, Calendar, Weather 2.0",
-  "companyName": "Martin Norland & alexsum",
+  "longName": "Time, Calendar, Weather 2",
+  "companyName": "Alexsum",
   "versionCode": 2,
-  "versionLabel": "2.0.17",
+  "versionLabel": "2.24",
   "watchapp": {
 	"watchface": true
   },
  
   "capabilities": [ "configurable" ],
   "appKeys": {
+		"countWeather":		17,
         "getPosition":   18,
 		"typePosition":   19,
 		"requestWeather": 21,
@@ -23,6 +24,19 @@
 		"statusbar": 28,  
 		"weathername" :29,
 		"country": 20,
+		"temperature0": 700,
+		"conditions0": 701,
+		"temperature6": 702,
+		"conditions6": 703,
+		"temperature12": 704,
+		"conditions12": 705,
+		"temperature18": 706,
+		"conditions18": 707,
+		"time0":708,
+		"time6":709,
+		"time12":710,
+		"time18":711,
+		
 	"send_phone_battery_request": 200,
     "send_battery_value": 211,
 	"send_battery_charging": 212,
@@ -91,183 +105,76 @@
 	"show_bt_connected":	 543,	
 	"show_location":	544,
 	"show_update_time":	545,
-	"trans_week":		542
+	"trans_week":		542,
+	"showDayWeather":	546,
+	"SleepBegin":		548,
+	"SleepEnd":			549,
+	"WeatherPeriod":   547,
+	"select_page":		550,
+	"bat_prc_view":		551,
+	"show_phone_state":	552,
+	"show_gmail":		554,
+	"vibe_disconnect_delay": 555,
+	"SleepMode":		556
   },
   "resources": {
     "media": [
       {
-        "characterRegex": "[:0-9]",
-        "type": "font",
-        "name": "FONT_DIGITAL_SEVEN_48",
-        "file": "fonts/DS-DIGIB.TTF"
-      },	
-      {
-        "characterRegex": "[:0-9]",
+		"characterRegex": "[:0-9]",
         "type": "font",
         "name": "FONT_DIGITAL_SEVEN_60",
-        "file": "fonts/DS-DIGIB.TTF"
+        "file": "fonts/ds-digib.ttf"
       },	  
-      {
-	    "characterRegex": "[ ,.:0-9А-Яа-яІіЇїA-Za-z]",
-        "type": "font",
-        "name": "FONT_DIGITAL_SEVEN_20",
-        "file": "fonts/digital-7.TTF"
-      },	  
-			{
-				"characterRegex": "[+-.,0-9°]",
-				"name": "FONT_FUTURA_40",
-				"type": "font",
-				"file": "fonts/digital-7.ttf"
-			},  
-			{
-				"characterRegex": "[+-.,0-9°]",
-				"name": "FONT_FUTURA_30",
-				"type": "font",
-				"file": "fonts/roboto.ttf"
-			}, 			
+ 
+	  {
+		"characterRegex": "[ASGCXYZBNVW]",
+		"name": "FONT_SYMBOL_25",
+		"type": "font",
+		"file": "fonts/symbol.ttf"
+	  },  
+	  
+	  
+	  {
+		"characterRegex": "[ABCDEFGHIJKLMNOPQRabc]",
+		"name": "FONT_WEATHER_32",
+		"type": "font",
+		"file": "fonts/weather.ttf"
+	  },  
+	  {
+		"characterRegex": "[ABCDEFGHIJKLMNOPQRabc]",
+		"name": "FONT_WEATHER_42",
+		"type": "font",
+		"file": "fonts/weather.ttf"
+	  }, 	  
+	  {
+		"characterRegex": "[ABCDEFGHIJKLMNOPQRabc]",
+		"name": "FONT_WEATHER_65",
+		"type": "font",
+		"file": "fonts/weather.ttf"
+	  }, 	  
       {
         "menuIcon": true,
         "type": "png",
         "name": "IMAGE_MENU_ICON_DARK",
         "file": "images/menu_icon_timely_dark.png"
       },
-      {
-        "type": "png",
-        "name": "IMAGE_BT_NOLINK_ICON",
-        "file": "images/bluetoothno.png"
-      },
-      {
-        "type": "png",
-        "name": "IMAGE_BT_LINKED_ICON",
-        "file": "images/bluetooth_thick_20_20.png"
-      },
-      {
-        "type": "png",
-        "name": "IMAGE_CHARGING_ICON",
-        "file": "images/charging_20_20.png"
-      },
-      {
-        "type": "png",
-        "name": "IMAGE_HOURVIBE_ICON",
-        "file": "images/hourvibe_20_20.png"
-      },
+  
 	  
-	  
-			{
-				"name": "ICON_LOADING1",
-				"type": "png",
-				"file": "images/loading1.png"
-			},
-			{
-				"name": "ICON_LOADING2",
-				"type": "png",
-				"file": "images/loading2.png"
-			},
-			{
-				"name": "ICON_LOADING3",
-				"type": "png",
-				"file": "images/loading3.png"
-			},
-			{
-				"name": "ICON_CLOUD_ERROR",
-				"type": "png",
-				"file": "images/cloud-error.png"
-			},	  
-			{
-				"name": "WEATHER_CLEAR_DAY",
-				"type": "png",
-				"file": "images/weather/clear-day.png"
-			},
-			{
-				"name": "WEATHER_CLEAR_NIGHT",
-				"type": "png",
-				"file": "images/weather/clear-night.png"
-			},
-			{
-				"name": "WEATHER_PARTLY_CLOUDY_DAY",
-				"type": "png",
-				"file": "images/weather/partly-cloudy-day.png"
-			},
-			{
-				"name": "WEATHER_PARTLY_CLOUDY_NIGHT",
-				"type": "png",
-				"file": "images/weather/partly-cloudy-night.png"
-			},
-			{
-				"name": "WEATHER_CLOUDY",
-				"type": "png",
-				"file": "images/weather/cloudy.png"
-			},
-			{
-				"name": "WEATHER_WIND",
-				"type": "png",
-				"file": "images/weather/wind.png"
-			},
-			{
-				"name": "WEATHER_FOG",
-				"type": "png",
-				"file": "images/weather/fog.png"
-			},
-			{
-				"name": "WEATHER_DRIZZLE",
-				"type": "png",
-				"file": "images/weather/drizzle.png"
-			},
-			{
-				"name": "WEATHER_RAIN",
-				"type": "png",
-				"file": "images/weather/rain.png"
-			},
-			{
-				"name": "WEATHER_SNOW",
-				"type": "png",
-				"file": "images/weather/snow.png"
-			},
-			{
-				"name": "WEATHER_RAIN_SNOW",
-				"type": "png",
-				"file": "images/weather/rain-snow.png"
-			},
-			{
-				"name": "WEATHER_SLEET",
-				"type": "png",
-				"file": "images/weather/sleet.png"
-			},
-			{
-				"name": "WEATHER_RAIN_SLEET",
-				"type": "png",
-				"file": "images/weather/rain-sleet.png"
-			},
-			{
-				"name": "WEATHER_SNOW_SLEET",
-				"type": "png",
-				"file": "images/weather/snow-sleet.png"
-			},
-			{
-				"name": "WEATHER_THUNDER",
-				"type": "png",
-				"file": "images/weather/thunder.png"
-			},
-			{
-				"name": "WEATHER_HOT",
-				"type": "png",
-				"file": "images/weather/hot.png"
-			},
-			{
-				"name": "WEATHER_COLD",
-				"type": "png",
-				"file": "images/weather/cold.png"
-			},
+  
+
+
 			{
 				"name": "BAT_PHONE",
 				"type": "png",
-				"file": "images/batphone.png"
+				"file": "images/batphoners.png"
 			},
 			{
 				"name": "BAT_PEBBLE",
 				"type": "png",
-				"file": "images/batpebble.png"
+				"file": "images/batpebblers.png"
 			},
+			
+			
 			{
 				"name": "CHARGING",
 				"type": "png",
@@ -277,17 +184,8 @@
 				"name": "PLUGED",
 				"type": "png",
 				"file": "images/pluged.png"
-			},
-			{
-				"name": "SMS_INCOM",
-				"type": "png",
-				"file": "images/sms.png"
-			},
-			{
-				"name": "CALLS_INCOM",
-				"type": "png",
-				"file": "images/calls.png"
 			}
+
     ]
   }
 }

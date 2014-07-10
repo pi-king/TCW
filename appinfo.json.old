@@ -1,0 +1,202 @@
+{
+  "uuid": "17E9E8A6-C57D-46C5-A8DA-2C7211DE0B73",
+  "shortName": "TCW",
+  "longName": "Time, Calendar, Weather 2",
+  "companyName": "Alexsum",
+  "versionCode": 2,
+  "versionLabel": "2.24",
+  "watchapp": {
+	"watchface": true
+  },
+ 
+  "capabilities": [ "configurable" ],
+  "appKeys": {
+		"countWeather":		17,
+        "getPosition":   18,
+		"typePosition":   19,
+		"requestWeather": 21,
+		"setWeather": 22,
+		"temperature": 23,
+		"conditions": 24,
+		"setPrefs": 25,
+		"tempFormat": 26,
+		"weatherUpdateFreq": 27,
+		"statusbar": 28,  
+		"weathername" :29,
+		"country": 20,
+		"temperature0": 700,
+		"conditions0": 701,
+		"temperature6": 702,
+		"conditions6": 703,
+		"temperature12": 704,
+		"conditions12": 705,
+		"temperature18": 706,
+		"conditions18": 707,
+		"time0":708,
+		"time6":709,
+		"time12":710,
+		"time18":711,
+		
+	"send_phone_battery_request": 200,
+    "send_battery_value": 211,
+	"send_battery_charging": 212,
+	
+	
+    "style_inv":     30,
+    "style_day_inv": 31,
+    "style_grid":    32,
+    "vibe_hour":     33,
+    "intl_dowo":     34,
+    "intl_fmt_date": 35,
+    "style_am_pm":   36,
+    "style_day":     37,
+    "style_week":    38,
+    "intl_fmt_week": 39,
+    "TODO___version":       40,
+    "vibe_pat_disconnect":  41,
+    "vibe_pat_connect":     42,
+    "message_type":         99,
+    "send_batt_percent":   100,
+    "send_batt_charging":  101,
+    "send_batt_plugged":   102,
+    "timezone_offset":     103,
+    "trans_abbr_sunday":   500,
+    "trans_abbr_monday":   501,
+    "trans_abbr_tuesday":  502,
+    "trans_abbr_wedsday":  503,
+    "trans_abbr_thursday": 504,
+    "trans_abbr_friday":   505,
+    "trans_abbr_saturday": 506,
+    "trans_january":    507,
+    "trans_february":   508,
+    "trans_march":      509,
+    "trans_april":      510,
+    "trans_may":        511,
+    "trans_june":       512,
+    "trans_july":       513,
+    "trans_august":     514,
+    "trans_september":  515,
+    "trans_october":    516,
+    "trans_november":   517,
+    "trans_december":   518,
+    "TODO___trans_alarm":      519,
+    "trans_sunday":     520,
+    "trans_monday":     521,
+    "trans_tuesday":    522,
+    "trans_wedsday":    523,
+    "trans_thursday":   524,
+    "trans_friday":     525,
+    "trans_saturday":   526,
+    "trans_connected":      527,
+    "trans_disconnected":   528,
+    "trans_time_am":    529,
+    "trans_time_pm":    530,
+	"degree_style":     531,
+	"first_page":       532,
+	"weather_upd":      533,
+	"battery_show":      534,
+	"phone_battery_show":      539,	
+	"auto_back":         540,
+	"default_font":      535,
+	"get_position":      536,
+	"type_position":     537,
+	"trans_getposition": 538,
+	"data_over_time":	 541,
+	"show_bt_connected":	 543,	
+	"show_location":	544,
+	"show_update_time":	545,
+	"trans_week":		542,
+	"showDayWeather":	546,
+	"SleepBegin":		548,
+	"SleepEnd":			549,
+	"WeatherPeriod":   547,
+	"select_page":		550,
+	"bat_prc_view":		551,
+	"show_phone_state":	552,
+	"show_gmail":		554,
+	"vibe_disconnect_delay": 555,
+	"SleepMode":		556
+  },
+  "resources": {
+    "media": [
+      {
+		"characterRegex": "[:0-9]",
+        "type": "font",
+        "name": "FONT_DIGITAL_SEVEN_60",
+        "file": "fonts/ds-digib.ttf"
+      },	  
+      {
+	    "characterRegex": "[ ,.:0-9А-Яа-яІіЇїA-Za-z°]",
+        "type": "font",
+        "name": "FONT_DIGITAL_SEVEN_20",
+        "file": "fonts/digital-7.TTF"
+      },	  
+	  {
+		"characterRegex": "[+-.,0-9°]",
+		"name": "FONT_FUTURA_40",
+		"type": "font",
+		"file": "fonts/digital-7.ttf"
+	  },  
+	  {
+		"characterRegex": "[ASGCXYZBNVW]",
+		"name": "FONT_SYMBOL_25",
+		"type": "font",
+		"file": "fonts/symbol.ttf"
+	  },  
+	  
+	  
+	  {
+		"characterRegex": "[ABCDEFGHIJKLMNOPQRabc]",
+		"name": "FONT_WEATHER_32",
+		"type": "font",
+		"file": "fonts/weather.ttf"
+	  },  
+	  {
+		"characterRegex": "[ABCDEFGHIJKLMNOPQRabc]",
+		"name": "FONT_WEATHER_42",
+		"type": "font",
+		"file": "fonts/weather.ttf"
+	  }, 	  
+	  {
+		"characterRegex": "[ABCDEFGHIJKLMNOPQRabc]",
+		"name": "FONT_WEATHER_65",
+		"type": "font",
+		"file": "fonts/weather.ttf"
+	  }, 	  
+      {
+        "menuIcon": true,
+        "type": "png",
+        "name": "IMAGE_MENU_ICON_DARK",
+        "file": "images/menu_icon_timely_dark.png"
+      },
+  
+	  
+  
+
+
+			{
+				"name": "BAT_PHONE",
+				"type": "png",
+				"file": "images/batphoners.png"
+			},
+			{
+				"name": "BAT_PEBBLE",
+				"type": "png",
+				"file": "images/batpebblers.png"
+			},
+			
+			
+			{
+				"name": "CHARGING",
+				"type": "png",
+				"file": "images/charging.png"
+			},
+			{
+				"name": "PLUGED",
+				"type": "png",
+				"file": "images/pluged.png"
+			}
+
+    ]
+  }
+}
